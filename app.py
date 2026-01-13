@@ -18,6 +18,14 @@ def get_ist_time():
     ist_now = utc_now.astimezone(pytz.timezone('Asia/Kolkata'))
     return ist_now.strftime("%d-%b-%Y %I:%M:%S %p")
 
+@st.cache_data(ttl=900, show_spinner=False) # Cache news for 15 mins
+def fetch_news(ticker_sym):
+    try:
+        t = yf.Ticker(ticker_sym)
+        return t.news
+    except:
+        return []
+
 def inject_custom_css(metal_choice):
     # Ultra Premium Dark Colors
     bg_main = "radial-gradient(circle at 50% 0%, #1a202c 0%, #0d1117 100%)" # Deep Blue-Grey to Black
@@ -145,13 +153,13 @@ def inject_custom_css(metal_choice):
     return accent, accent_bg, text_primary, grad_text
 
 # --- SIDEBAR CONFIG ---
-st.sidebar.title("💎 Luxury Analytics")
+st.sidebar.title("Data Analytics")
 metal_choice = st.sidebar.radio("Select Asset:", ["Gold", "Silver"], horizontal=True)
 
 accent_c, accent_bg, text_c, grad_txt = inject_custom_css(metal_choice)
 
 
-period = st.sidebar.selectbox("History:", ["1mo", "6mo", "1y", "5y", "max"], index=2) 
+period = st.sidebar.selectbox("History:", ["1mo","3mo", "6mo", "1y", "5y", "max"], index=2) 
 
 # --- LOCATION SELECTOR & TAX TOGGLE ---
 # We use columns to put this in the "header" area visually
@@ -286,7 +294,7 @@ is_up = change >= 0
 color_trend = "#00FF00" if is_up else "#FF4B4B" # Bright Green or Bright Red for text
 
 # --- TABS LAYOUT ---
-tab_simple, tab_advanced, tab_ai = st.tabs(["🏠 Simple View", "📊 Advanced Analytics", "🔮 AI Forecast"])
+tab_simple, tab_advanced, tab_ai, tab_news = st.tabs(["🏠 Simple View", "📊 Advanced Analytics", "🔮 AI Forecast", "📰 Live Updates"])
 
 # ==========================================
 # 1. SIMPLE VIEW (COMMON MAN)
@@ -476,15 +484,10 @@ with tab_ai:
         # Display logic
         threshold = current_price * 1.005
         
-        if prediction > threshold:
-            sig = "BUY"
-            color = "#00FF00"
-        elif prediction < current_price * 0.995:
-            sig = "SELL"
-            color = "#FF4B4B"
+        if prediction > current_price:
+            st.success(f"📈 AI Signal: BULLISH (Target: ₹{prediction:,.0f})")
         else:
-            sig = "HOLD"
-            color = "#FFA500"
+            st.error(f"📉 AI Signal: BEARISH (Target: ₹{prediction:,.0f})")
             
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -500,3 +503,76 @@ with tab_ai:
             
     else:
         st.info("Collecting more data points for accurate prediction...")
+
+# ==========================================
+# 4. LIVE NEWS
+# ==========================================
+with tab_news:
+    st.markdown("### 🌍 Global Market Intelligence")
+    st.caption("Real-time updates from reliable financial sources via Yahoo Finance.")
+    
+    # 1. AI Summary Snippet (Sentiment)
+    # We can infer sentiment from RSI for a "Quick Glance"
+    rsi_val = list(data['RSI'])[-1] if 'RSI' in data and len(data) > 0 else 50
+    sentiment = "BULLISH" if rsi_val > 55 else ("BEARISH" if rsi_val < 45 else "NEUTRAL")
+    sent_color = "#00FF00" if sentiment == "BULLISH" else ("#FF4B4B" if sentiment == "BEARISH" else "#CCCCCC")
+    
+    st.markdown(f"""
+    <div class="premium-card" style="margin-bottom: 20px; border-left: 4px solid {sent_color};">
+        <h4 style="margin:0; color: {accent_c};">🤖 AI Analyst Note</h4>
+        <p style="margin:5px 0 0 0; color: {text_c}; font-size: 0.95rem;">
+            Current technical indicators (RSI: {rsi_val:.1f}) suggest a 
+            <b style="color: {sent_color};">{sentiment}</b> sentiment for {metal_choice}.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. News Feed
+    news_items = fetch_news(metal_ticker)
+    
+    if not news_items:
+        st.info("No recent news found. Check back later.")
+    else:
+        for item in news_items:
+            try:
+                content = item.get('content', {})
+                title = content.get('title', 'Market Update')
+                # YFinance structure varies, try top level then content
+                if title == 'Market Update': title = item.get('title', 'Market Update')
+                
+                link = content.get('clickThroughUrl', {}).get('url', '#')
+                if link == '#': link = item.get('link', '#')
+                
+                pub_str = content.get('pubDate', '')
+                
+                # Thumbnail
+                thumb_url = None
+                thumb_data = content.get('thumbnail', {})
+                if thumb_data:
+                    thumb_url = thumb_data.get('originalUrl', None)
+                
+                # News Card
+                with st.container():
+                    c_thumb, c_text = st.columns([1, 4])
+                    
+                    with c_thumb:
+                        if thumb_url:
+                            st.image(thumb_url, use_container_width=True)
+                        else:
+                            st.markdown(f"<div style='height: 80px; background: {accent_bg}; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem;'>📰</div>", unsafe_allow_html=True)
+                            
+                    with c_text:
+                        st.markdown(f"""
+                        <div style="padding-left: 10px;">
+                            <a href="{link}" target="_blank" style="text-decoration: none;">
+                                <h4 style="margin: 0; color: #FFF; font-size: 1.1rem; font-weight: 600;">{title}</h4>
+                            </a>
+                            <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 0.85rem;">
+                                {pub_str[:10] if pub_str else 'Today'} • <a href="{link}" style="color: {accent_c}; text-decoration: none;">Read Full Story ↗</a>
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.divider()
+            except Exception as e:
+                continue
