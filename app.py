@@ -30,9 +30,9 @@ def inject_custom_css(metal_choice):
         accent_bg = "rgba(255, 215, 0, 0.15)"
         grad_text = "linear-gradient(45deg, #FFD700, #FDB931)"
     else:
-        accent = "#00FFFF" # Cyan/Neon Blue for Silver
-        accent_bg = "rgba(0, 255, 255, 0.15)" 
-        grad_text = "linear-gradient(45deg, #00FFFF, #00BFFF)"
+        accent = "#E0E0E0" # Metallic White/Silver
+        accent_bg = "rgba(220, 220, 220, 0.1)" 
+        grad_text = "linear-gradient(45deg, #FFFFFF, #B0B0B0)" # White to Silver Gradient
 
     css = f"""
     <style>
@@ -162,7 +162,14 @@ with c_loc:
     locations = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu", "Maharashtra", "Delhi", "USA", "UK", "UAE", "Australia", "Canada"]
     location = st.selectbox("📍 Location", locations, index=0)
 with c_tax:
-    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Access alignment hack
+    # Improved Alignment: Use a container with padding to push the toggle down cleanly
+    st.markdown("""
+        <style>
+        .stToggle {
+            margin-top: 15px; /* Adjust this to align with the Selectbox */
+        }
+        </style>
+    """, unsafe_allow_html=True)
     show_tax = st.toggle("Include Taxes", value=True)
 
 # Static Tickers - REVERT TO FUTURES (MORE RELIABLE)
