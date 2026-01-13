@@ -19,109 +19,136 @@ def get_ist_time():
     return ist_now.strftime("%d-%b-%Y %I:%M:%S %p")
 
 def inject_custom_css(metal_choice):
-    # Apple HIG Colors
-    bg_main = "#F5F5F7" # Apple Light Gray
-    bg_card = "#FFFFFF" # Pure White
-    text_primary = "#1D1D1F" # Apple Black
-    text_secondary = "#86868B" # Apple Gray
+    # Ultra Premium Dark Colors
+    bg_main = "radial-gradient(circle at 50% 0%, #1a202c 0%, #0d1117 100%)" # Deep Blue-Grey to Black
+    bg_card = "rgba(255, 255, 255, 0.05)" # Glass Dark
+    text_primary = "#FFFFFF"
+    text_secondary = "#94a3b8" # Slate 400
     
     if metal_choice == "Gold":
-        accent = "#B8860B" # Darker Gold for text readability on white
-        accent_bg = "rgba(255, 215, 0, 0.1)" # Light Gold background
+        accent = "#FFD700" # Neon Gold
+        accent_bg = "rgba(255, 215, 0, 0.15)"
+        grad_text = "linear-gradient(45deg, #FFD700, #FDB931)"
     else:
-        # User wants "Silver" color. Silver Text on white is bad. We use a Slate Gray/Blue.
-        accent = "#5E6C84" 
-        accent_bg = "rgba(94, 108, 132, 0.1)"
+        accent = "#00FFFF" # Cyan/Neon Blue for Silver
+        accent_bg = "rgba(0, 255, 255, 0.15)" 
+        grad_text = "linear-gradient(45deg, #00FFFF, #00BFFF)"
 
     css = f"""
     <style>
+        /* IMPORT OUTFIT FONT */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
         /* ANIMATIONS */
         @keyframes fadeIn {{
             from {{ opacity: 0; transform: translateY(10px); }}
             to {{ opacity: 1; transform: translateY(0); }}
         }}
         
-        @keyframes pulse {{
-            0% {{ box-shadow: 0 0 0 0 {accent}33; }}
-            70% {{ box-shadow: 0 0 0 10px rgba(0,0,0,0); }}
-            100% {{ box-shadow: 0 0 0 0 rgba(0,0,0,0); }}
+        @keyframes glow {{
+            0% {{ box-shadow: 0 0 5px {accent}20; }}
+            50% {{ box-shadow: 0 0 20px {accent}60, 0 0 10px {accent}; }}
+            100% {{ box-shadow: 0 0 5px {accent}20; }}
         }}
     
-        /* APPLE SYSTEM FONTS */
+        /* GLOBAL STYLES */
         html, body, [class*="css"] {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Outfit', sans-serif;
             color: {text_primary};
         }}
         
         .stApp {{
-            background-color: {bg_main};
+            background: {bg_main};
+            background-attachment: fixed;
         }}
         
         h1, h2, h3, h4 {{
             color: {text_primary} !important;
-            font-weight: 600;
-            letter-spacing: -0.5px; /* Tighter headers */
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }}
         
         /* FROSTED GLASS SIDEBAR */
         [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.75);
-            backdrop-filter: saturate(180%) blur(25px); /* Stronger blur */
-            border-right: 1px solid rgba(0,0,0,0.03);
+            background-color: rgba(13, 17, 23, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-right: 1px solid rgba(255,255,255,0.05);
         }}
         
-        /* ULTRA PREMIUM CARDS */
-        div[data-testid="stMetric"] {{
-            background-color: {bg_card};
-            border: none;
-            border-radius: 20px;
+        /* ULTRA PREMIUM DARK CARDS */
+        div[data-testid="stMetric"], .premium-card {{
+            background: {bg_card};
+            border: 1px solid rgba(255,255,255,0.08); /* Subtle border */
+            border-radius: 24px;
             padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            animation: fadeIn 0.6s ease-out both; /* Entry Animation */
-        }}
-        div[data-testid="stMetric"]:hover {{
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.08); /* Deep glow on hover */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); /* Deep shadow */
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy */
+            animation: fadeIn 0.8s ease-out both;
+            backdrop-filter: blur(10px);
         }}
         
-        /* CUSTOM WHITE CARDS (Manually created ones) */
-        .premium-card {{
-            background-color: #FFFFFF;
-            border-radius: 20px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            transition: all 0.3s ease;
-            animation: fadeIn 0.6s ease-out both;
-        }}
-        .premium-card:hover {{
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        div[data-testid="stMetric"]:hover, .premium-card:hover {{
+            transform: translateY(-5px) scale(1.02);
+            border-color: {accent};
+            box-shadow: 0 0 30px {accent}33; /* Glow effect */
         }}
         
+        /* Typography adjust inside cards */
         div[data-testid="stMetric"] label {{
             color: {text_secondary} !important;
             font-size: 0.85rem;
-            font-weight: 500;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
             color: {text_primary} !important;
-            font-weight: 700;
-            font-size: 2rem !important;
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }}
+        
+        /* TABS - NEON STYLE */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 15px;
+            background-color: transparent; 
+            padding: 5px;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 8px 20px;
+            color: {text_secondary};
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background-color: {accent}22 !important; /* Low opacity accent BG */
+            border-color: {accent} !important;
+            color: {accent} !important;
+            box-shadow: 0 0 15px {accent}40;
+        }}
+    
+        /* GRADIENT TEXT HELPER */
+        .grad-text {{
+            background: {grad_text};
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }}
+        
+        /* CHECKBOX */
+        [data-baseweb="checkbox"] div {{
+            background-color: {accent} !important;
         }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-    return accent, accent_bg, text_primary
+    return accent, accent_bg, text_primary, grad_text
 
 # --- SIDEBAR CONFIG ---
-st.sidebar.title(" Analysis")
+st.sidebar.title("💎 Luxury Analytics")
 metal_choice = st.sidebar.radio("Select Asset:", ["Gold", "Silver"], horizontal=True)
 
-accent_c, accent_bg, text_c = inject_custom_css(metal_choice)
+accent_c, accent_bg, text_c, grad_txt = inject_custom_css(metal_choice)
 
 
 period = st.sidebar.selectbox("History:", ["1mo", "6mo", "1y", "5y", "max"], index=2) 
@@ -270,40 +297,44 @@ with tab_simple:
         with k24:
              st.markdown(f"""
              <div class="premium-card">
-                 <h4 style="margin:0; color: {accent_c};">24 Karat (99.9%)</h4>
-                 <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_24k:,.0f}</h1>
-                 <p style="margin:0; font-size: 0.9rem; color: #86868B;">Pure Gold Coin/Bar</p>
+                 <h4 style="margin:0; color: {accent_c}; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem;">24 Karat (99.9%)</h4>
+                 <h1 style="margin:0; font-size: 3rem; color: #FFF;">₹{price_24k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.9rem; color: {text_c}; opacity: 0.7;">Pure Gold</p>
              </div>
              """, unsafe_allow_html=True)
         with k22:
              st.markdown(f"""
              <div class="premium-card">
-                 <h4 style="margin:0; color: {accent_c};">22 Karat (91.6%)</h4>
-                 <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_22k:,.0f}</h1>
-                 <p style="margin:0; font-size: 0.9rem; color: #86868B;">Standard Jewellery</p>
+                 <h4 style="margin:0; color: {accent_c}; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem;">22 Karat (91.6%)</h4>
+                 <h1 style="margin:0; font-size: 3rem; color: #FFF;">₹{price_22k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.9rem; color: {text_c}; opacity: 0.7;">Jewellery Standard</p>
              </div>
              """, unsafe_allow_html=True)
     else:
         # Silver Display
         st.markdown(f"""
              <div class="premium-card">
-                 <h1 style="margin:0; font-size: 4.5rem; color: #1D1D1F;">₹{current_price:,.0f}</h1>
-                 <p style="margin:0; font-size: 1.1rem; color: #86868B;">Silver (99.9%) per Kg</p>
+                 <h1 class="grad-text" style="margin:0; font-size: 4.5rem;">₹{current_price:,.0f}</h1>
+                 <p style="margin:0; font-size: 1.1rem; color: {text_c}; opacity: 0.8;">Silver (99.9%) per Kg</p>
              </div>
              """, unsafe_allow_html=True)
 
     
     st.divider()
     
-    # Trend Indicator
-    st.markdown(f"""
-    <div style="text-align: center;">
-        <h3 style="color: {color_trend};">
+    # Big Price Display - LUXURY STYLE
+    html_price = f"""
+    <div style="text-align: center; padding: 20px;">
+        <h1 class="grad-text" style="font-size: 6rem; letter-spacing: -2px; margin: 0; padding-bottom: 10px;">₹{current_price:,.0f}</h1>
+        <h3 style="color: {color_trend}; margin-top: -10px; font-weight: 600;">
             {'▲' if is_up else '▼'} ₹{abs(change):,.0f} ({pct_change:.2f}%)
+            <span style="font-size: 1rem; color: #94a3b8; font-weight: 500;">LIVE</span>
         </h3>
-        <p style="color: #86868B;">Market Movement Today</p>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(html_price, unsafe_allow_html=True)
+    
+    st.divider()
     
     # PRICE BREAKDOWN (TAX SPLIT)
     if tax_factor > 1.0:
@@ -358,52 +389,48 @@ with tab_advanced:
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                         vertical_spacing=0.05, row_heights=[0.7, 0.3])
 
-    # Main Price Area
-    # Use fill='tozeroy' for the gradient look (Plotly defaults are solid but better than line)
-    # To get real gradient we need more complex rgba, but 'tozeroy' with opacity is good enough for "Stocks" look
+    # Gradient Area Chart
     fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], mode='lines', name='Price',
-                             line=dict(color=accent_c, width=2),
+                             line=dict(color=accent_c, width=3), # Thicker line
                              fill='tozeroy', 
-                             fillcolor=f"rgba{tuple(int(accent_c.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (0.1,)}"), # Hex to RGBA hack
+                             fillcolor=f"rgba{tuple(int(accent_c.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (0.1,)}"),
                   row=1, col=1)
                   
     fig.add_trace(go.Scatter(x=data['Date'], y=data['SMA_20'], mode='lines', name='SMA 20',
-                             line=dict(color='rgba(255, 165, 0, 0.5)', width=1)),
+                             line=dict(color='rgba(255, 255, 255, 0.3)', width=1, dash='dot')), # Dashed white SMA
                   row=1, col=1)
     
-    # Bollinger Bands (Subtle)
-    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], mode='lines', name='BB Upper',
-                             line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5), showlegend=False),
+    # Bollinger Bands
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], mode='lines', 
+                             line=dict(color='rgba(255,255,255,0.1)', width=0.5), showlegend=False),
                   row=1, col=1)
-    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], mode='lines', name='BB Lower',
-                             line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5), fill='tonexty',
-                             fillcolor='rgba(128, 128, 128, 0.05)', showlegend=False),
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], mode='lines', 
+                             line=dict(color='rgba(255,255,255,0.1)', width=0.5), fill='tonexty',
+                             fillcolor='rgba(255,255,255,0.02)', showlegend=False),
                   row=1, col=1)
 
     # Volume Bar
-    # Color bars based on Up/Down
-    colors = [
-        '#00C805' if row['Open'] - row['Close'] >= 0 else '#FF5000' 
-        for index, row in data.iterrows() 
-    ]
-    fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], name='Volume', marker_color=colors, opacity=0.3),
+    colors = ['#00FF00' if row['Open'] - row['Close'] >= 0 else '#FF0000' for index, row in data.iterrows()]
+    fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], name='Volume', marker_color=colors, opacity=0.5),
                   row=2, col=1)
 
     fig.update_layout(
+        template='plotly_dark', # DARK THEME
         height=500,
         margin=dict(l=20, r=20, t=30, b=20),
-        paper_bgcolor='rgba(0,0,0,0)',
+        # paper_bgcolor='rgba(0,0,0,0)', # Removed as per instruction
         plot_bgcolor='rgba(0,0,0,0)',
         hovermode='x unified',
         dragmode='pan',
-        showlegend=False
+        showlegend=False,
+        font=dict(family="Outfit, sans-serif")
     )
     
-    # Minimalist Axes
-    fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False, row=1, col=1) # Hide X on top chart
-    fig.update_xaxes(showgrid=False, zeroline=False, color='#86868B', row=2, col=1)
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.05)', zeroline=False, color='#86868B', row=1, col=1) # Faint grid Y
-    fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False, row=2, col=1) # Hide Y on vol
+    # Axes
+    fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False, row=1, col=1)
+    fig.update_xaxes(showgrid=False, zeroline=False, color='#94a3b8', row=2, col=1)
+    fig.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.05)', zeroline=False, color='#94a3b8', row=1, col=1)
+    fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False, row=2, col=1)
 
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
