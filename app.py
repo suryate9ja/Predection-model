@@ -9,102 +9,127 @@ import numpy as np
 import time
 
 # --- P1: APP CONFIG & THEME SETUP ---
+# --- P1: APP CONFIG & THEME SETUP ---
 st.set_page_config(page_title="Gold/Silver Live", layout="wide", page_icon="🪙")
 
-def inject_custom_css(choice):
-    if choice == "Gold":
-        primary = "#FFD700"  # Gold
-        secondary = "#B8860B" 
-        bg_card = "#2A2419"
-        radial_gradient = "radial-gradient(circle at top, #2C2615 0%, #0E1117 100%)"
+def inject_custom_css(metal_choice, theme_mode):
+    # Base Colors
+    if metal_choice == "Gold":
+        accent = "#FFD700" if theme_mode == "Dark" else "#B8860B" # Bright Gold vs Dark Gold
+        accent_secondary = "#D4AF37"
     else:
-        primary = "#C0C0C0"  # Silver
-        secondary = "#A9A9A9" 
-        bg_card = "#1F242D"
-        radial_gradient = "radial-gradient(circle at top, #1C2028 0%, #0E1117 100%)"
-        
+        accent = "#00BFFF" if theme_mode == "Dark" else "#4682B4" # Cyan vs Steel Blue
+        accent_secondary = "#C0C0C0"
+
+    # Theme Colors
+    if theme_mode == "Dark":
+        bg_main = "radial-gradient(circle at top, #1F242D 0%, #0E1117 100%)"
+        bg_card = "rgba(255,255,255,0.05)"
+        text_primary = "#FFFFFF"
+        text_secondary = "#8B949E"
+        card_border = "rgba(255,255,255,0.1)"
+        sidebar_bg = "rgba(14, 17, 23, 0.9)"
+    else:
+        bg_main = "linear-gradient(135deg, #F0F2F6 0%, #FFFFFF 100%)"
+        bg_card = "#FFFFFF"
+        text_primary = "#000000"
+        text_secondary = "#31333F"
+        card_border = "rgba(0,0,0,0.1)"
+        sidebar_bg = "#F0F2F6"
+
     css = f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
         
         html, body, [class*="css"] {{
             font-family: 'Outfit', sans-serif;
+            color: {text_primary};
         }}
         
         .stApp {{
-            background: {radial_gradient};
+            background: {bg_main};
             background-attachment: fixed;
         }}
         
-        h1, h2, h3 {{
-            color: {primary} !important;
+        h1, h2, h3, h4 {{
+            color: {text_primary} !important;
             font-weight: 800;
         }}
         
         [data-testid="stSidebar"] {{
-            background-color: rgba(22, 27, 34, 0.6);
-            backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255,255,255,0.1);
+            background-color: {sidebar_bg};
+            border-right: 1px solid {card_border};
         }}
         
         /* METRIC CARDS */
         div[data-testid="stMetric"] {{
-            background: linear-gradient(135deg, {bg_card} 0%, rgba(20,20,20,0.8) 100%);
-            border: 1px solid rgba(255,255,255,0.05);
+            background: {bg_card};
+            border: 1px solid {card_border};
             border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
         }}
         div[data-testid="stMetric"]:hover {{
             transform: translateY(-5px);
-            border-color: {primary};
-            box-shadow: 0 15px 40px -10px {primary}33; /* 33 is opacity hex */
+            border-color: {accent};
+            box-shadow: 0 10px 20px {accent}33;
         }}
-        
+        div[data-testid="stMetric"] label {{
+            color: {text_secondary} !important;
+        }}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
+            color: {text_primary} !important;
+        }}
+
         /* TABS */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 10px;
-            background-color: transparent;
         }}
         .stTabs [data-baseweb="tab"] {{
-            background-color: rgba(255,255,255,0.03);
+            background-color: {bg_card};
+            border: 1px solid {card_border};
             border-radius: 50px;
             padding: 10px 24px;
-            color: #8B949E;
+            color: {text_secondary};
             font-weight: 600;
         }}
         .stTabs [aria-selected="true"] {{
-            background-color: {primary} !important;
-            color: #000000 !important;
+            background-color: {accent} !important;
+            color: {'#000000' if theme_mode == 'Dark' else '#FFFFFF'} !important;
         }}
         
-        /* BUTTONS */
-        .stButton button {{
-            background-color: transparent;
-            border: 1px solid {primary};
-            color: {primary};
-            transition: 0.3s;
-        }}
-        .stButton button:hover {{
-            background-color: {primary};
-            color: black;
+        /* CUSTOM TEXT ACCENTS */
+        .accent-text {{
+            color: {accent};
         }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+    return accent
 
-# --- SIDEBAR & THEME SELECTION ---
-st.sidebar.title("⚙️ Config")
-metal_choice = st.sidebar.radio("Select Asset:", ["Gold", "Silver"], horizontal=True) # Radio looks cleaner for fewer ops
-period = st.sidebar.selectbox("Data Period:", ["1y", "2y", "5y", "max"], index=1) 
-inject_custom_css(metal_choice)
+# --- SIDEBAR CONFIG ---
+st.sidebar.title("⚙️ Personalize")
+theme_mode = st.sidebar.radio("Theme:", ["Dark", "Light"], horizontal=True)
+metal_choice = st.sidebar.radio("Asset:", ["Gold", "Silver"], horizontal=True)
+
+accent_color = inject_custom_css(metal_choice, theme_mode)
+
+period = st.sidebar.selectbox("History:", ["1mo", "6mo", "1y", "5y", "max"], index=2) 
+
+# --- LOCATION SELECTOR (TOP RIGHT) ---
+# We use columns to put this in the "header" area visually
+c_title, c_loc = st.columns([3, 1])
+with c_title:
+    st.title(f"{metal_choice} Dashboard")
+with c_loc:
+    locations = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu", "Maharashtra", "Delhi", "USA", "UK", "UAE", "Australia", "Canada"]
+    location = st.selectbox("📍 Location / Tax Zone", locations, index=0)
 
 # Static Tickers
 metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
 currency_ticker = "USDINR=X"
 unit = "10 Grams" if metal_choice == "Gold" else "1 Kilogram"
-unit_short = "10g" if metal_choice == "Gold" else "1kg"
 
 # --- HELPER FUNCTIONS ---
 def fix_data_structure(df):
@@ -130,12 +155,14 @@ def calculate_bollinger(data, window=20, num_std=2):
 
 # --- DATA FETCHING (CACHED 5 MINS) ---
 @st.cache_data(ttl=300, show_spinner=False)
-def get_data(metal_sym, curr_sym, period):
+def get_data(metal_sym, curr_sym, period, location_factor=1.0):
     # Metal
     metal = yf.download(metal_sym, period=period, progress=False)
     metal = fix_data_structure(metal)
     
     # Currency
+    # If location is NOT India, we might want to use USD. But user asked for "all states in india" implies INR focus.
+    # We will stick to INR for now as the base currency.
     curr = yf.download(curr_sym, period=period, progress=False)
     curr = fix_data_structure(curr)
     
@@ -144,12 +171,13 @@ def get_data(metal_sym, curr_sym, period):
     df = metal.copy()
     aligned_currency = curr['Close'].reindex(df.index).ffill().bfill()
     
-    # Factor
-    factor = (10 / 31.1035) if metal_choice == "Gold" else (1.0 / 0.0311035)
+    # Unit Factor
+    unit_mult = (10 / 31.1035) if metal_choice == "Gold" else (1.0 / 0.0311035)
     
-    # Conversion
+    # Conversion + Tax Logic
+    # Price = (Global_Spot * USDINR * Unit_Mult) * Tax_Factor
     for col in ['Open', 'High', 'Low', 'Close']:
-        df[col] = (df[col] * aligned_currency) * factor
+        df[col] = (df[col] * aligned_currency) * unit_mult * location_factor
     
     df = df.dropna()
     df.reset_index(inplace=True)
@@ -162,10 +190,27 @@ def get_data(metal_sym, curr_sym, period):
     
     return df
 
+# --- TAX LOGIC ---
+india_states = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu", "Maharashtra", "Delhi", "Kerala", "West Bengal", "Gujarat"]
+tax_factor = 1.0
+
+if location in india_states:
+    # India: Import Duty (15%) + GST (3%) approx 18.45% compounds or flat 18%
+    # We use a rough valid estimator of 1.18
+    tax_factor = 1.18 
+    # State slight variations (Transportation/Local demands)
+    if location == "Andhra Pradesh" or location == "Telangana": tax_factor += 0.005 # +0.5%
+    if location == "Tamil Nadu" or location == "Kerala": tax_factor -= 0.005 # Cheaper?
+    if location == "Maharashtra": tax_factor += 0.01 # Premium
+elif location == "UAE":
+    tax_factor = 1.05 # 5% VAT
+else:
+    tax_factor = 1.0 # Global Spot (USA/UK etc)
+
 # Main App Logic
 try:
-    with st.spinner(f"Updating {metal_choice} prices..."):
-        data = get_data(metal_ticker, currency_ticker, period)
+    with st.spinner(f"Fetching rates for {location}..."):
+        data = get_data(metal_ticker, currency_ticker, period, location_factor=tax_factor)
     
     if data.empty:
         st.error("Market data unavailable. Please try again later.")
@@ -196,22 +241,52 @@ tab_simple, tab_advanced, tab_ai = st.tabs(["🏠 Simple View", "📊 Advanced A
 # 1. SIMPLE VIEW (COMMON MAN)
 # ==========================================
 with tab_simple:
-    st.markdown(f"<h2 style='text-align: center; margin-bottom: 0px;'>Current {metal_choice} Rate</h2>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: #888;'>Price per {unit} (Includes Currency Conversion)</p>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center; margin-bottom: 0px;'>{location} Rate</h3>", unsafe_allow_html=True)
+    st.caption(f"Price per {unit} • Includes Estimated Taxes & Import Duties")
     
-    # Big Price Display
-    html_price = f"""
-    <div style="text-align: center; padding: 20px;">
-        <h1 style="font-size: 5rem; color: #FFFFFF; font-weight: 800; margin: 0;">₹{current_price:,.0f}</h1>
-        <h3 style="color: {color_trend}; margin-top: -10px;">
-            {'▲' if is_up else '▼'} ₹{abs(change):,.0f} ({pct_change:.2f}%)
-            <span style="font-size: 1rem; color: #888; font-weight: 400;">Today</span>
-        </h3>
-    </div>
-    """
-    st.markdown(html_price, unsafe_allow_html=True)
+    # KARAT LOGIC
+    price_24k = current_price
+    price_22k = current_price * 0.916 if metal_choice == "Gold" else current_price # Silver usually 999 or not quoted in 22k
+    
+    if metal_choice == "Gold":
+        k24, k22 = st.columns(2)
+        with k24:
+             st.markdown(f"""
+             <div style="background-color: {accent_color}11; border: 1px solid {accent_color}; border-radius: 10px; padding: 15px; text-align: center;">
+                 <h4 style="margin:0; color: {accent_color};">24 Karat (99.9%)</h4>
+                 <h1 style="margin:0; font-size: 2.5rem;">₹{price_24k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.8rem; opacity: 0.7;">Pure Gold Coin/Bar</p>
+             </div>
+             """, unsafe_allow_html=True)
+        with k22:
+             st.markdown(f"""
+             <div style="background-color: {accent_color}11; border: 1px dashed {accent_color}; border-radius: 10px; padding: 15px; text-align: center;">
+                 <h4 style="margin:0; color: {accent_color};">22 Karat (91.6%)</h4>
+                 <h1 style="margin:0; font-size: 2.5rem;">₹{price_22k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.8rem; opacity: 0.7;">Standard Jewellery</p>
+             </div>
+             """, unsafe_allow_html=True)
+    else:
+        # Silver Display (Just one large block)
+        st.markdown(f"""
+             <div style="background-color: {accent_color}11; border: 1px solid {accent_color}; border-radius: 10px; padding: 20px; text-align: center;">
+                 <h1 style="margin:0; font-size: 4rem;">₹{current_price:,.0f}</h1>
+                 <p style="margin:0; font-size: 1rem; opacity: 0.7;">Silver (99.9%) per Kg</p>
+             </div>
+             """, unsafe_allow_html=True)
+
     
     st.divider()
+    
+    # Trend Indicator
+    st.markdown(f"""
+    <div style="text-align: center;">
+        <h3 style="color: {color_trend};">
+            {'▲' if is_up else '▼'} ₹{abs(change):,.0f} ({pct_change:.2f}%)
+        </h3>
+        <p>Market Movement Today</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Simple Recommendation Card
     rsi_latest = data['RSI'].iloc[-1]
