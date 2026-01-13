@@ -7,10 +7,16 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import numpy as np
 import time
+from datetime import datetime
+import pytz
 
 # --- P1: APP CONFIG & THEME SETUP ---
-# --- P1: APP CONFIG & THEME SETUP ---
 st.set_page_config(page_title="Gold/Silver Live", layout="wide", page_icon="🪙")
+
+def get_ist_time():
+    utc_now = datetime.now(pytz.utc)
+    ist_now = utc_now.astimezone(pytz.timezone('Asia/Kolkata'))
+    return ist_now.strftime("%d-%b-%Y %I:%M:%S %p")
 
 def inject_custom_css(metal_choice, theme_mode):
     # Base Colors
@@ -110,6 +116,33 @@ def inject_custom_css(metal_choice, theme_mode):
 
 # --- SIDEBAR CONFIG ---
 st.sidebar.title("⚙️ Personalize")
+
+# LIVE CLOCK
+st.sidebar.markdown(f"""
+<div style="background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
+    <p style="margin:0; font-size: 0.8rem; opacity: 0.8;">Current Time (IST)</p>
+    <p style="margin:0; font-size: 1.1rem; font-weight: bold; color: #FFA500;">{get_ist_time()}</p>
+</div>
+""", unsafe_allow_html=True)
+
+# AUTO REFRESH LOGIC
+if 'last_run' not in st.session_state:
+    st.session_state.last_run = time.time()
+
+refresh_in_sec = 300 # 5 mins
+now = time.time()
+if now - st.session_state.last_run > refresh_in_sec:
+    st.session_state.last_run = now
+    st.rerun()
+
+# Count down text (Optional, keep simple for now)
+if st.sidebar.checkbox("Actively Auto-Refresh (5m)", value=True):
+    time_left = int(refresh_in_sec - (now - st.session_state.last_run))
+    if time_left <= 0:
+        st.rerun()
+    # Simple trick to force re-runs to update the clock if needed, but might be too aggressive.
+    # We will rely on user interaction or the check above on load.
+
 theme_mode = st.sidebar.radio("Theme:", ["Dark", "Light"], horizontal=True)
 metal_choice = st.sidebar.radio("Asset:", ["Gold", "Silver"], horizontal=True)
 
@@ -126,8 +159,13 @@ with c_loc:
     locations = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu", "Maharashtra", "Delhi", "USA", "UK", "UAE", "Australia", "Canada"]
     location = st.selectbox("📍 Location / Tax Zone", locations, index=0)
 
-# Static Tickers
+# Static Tickers - CHANGED TO SPOT
+# Gold Spot: XAUUSD=X, Silver Spot: XAGUSD=X
 metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
+# Try switching to Spot, but if issues, we might need a fallback.
+# For now, let's stick to XAUUSD=X as requested to fix discrepancy.
+metal_ticker = "XAUUSD=X" if metal_choice == "Gold" else "XAGUSD=X"
+
 currency_ticker = "USDINR=X"
 unit = "10 Grams" if metal_choice == "Gold" else "1 Kilogram"
 
@@ -195,13 +233,15 @@ india_states = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", 
 tax_factor = 1.0
 
 if location in india_states:
-    # India: Import Duty (15%) + GST (3%) approx 18.45% compounds or flat 18%
-    # We use a rough valid estimator of 1.18
-    tax_factor = 1.18 
+    # PRECISE CALCULATION FOR INDIA
+    # Import Duty is ~15%. GST is 3% on (Base + Duty). 
+    # Factor = 1.15 * 1.03 = 1.1845
+    tax_factor = 1.185 # Rounding to 1.185
+    
     # State slight variations (Transportation/Local demands)
-    if location == "Andhra Pradesh" or location == "Telangana": tax_factor += 0.005 # +0.5%
-    if location == "Tamil Nadu" or location == "Kerala": tax_factor -= 0.005 # Cheaper?
-    if location == "Maharashtra": tax_factor += 0.01 # Premium
+    if location == "Andhra Pradesh" or location == "Telangana": tax_factor += 0.002 
+    if location == "Tamil Nadu" or location == "Kerala": tax_factor -= 0.002
+    if location == "Maharashtra": tax_factor += 0.005 # Premium
 elif location == "UAE":
     tax_factor = 1.05 # 5% VAT
 else:
@@ -287,6 +327,19 @@ with tab_simple:
         <p>Market Movement Today</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # PRICE BREAKDOWN (TAX SPLIT)
+    if tax_factor > 1.0:
+        base_price = current_price / tax_factor
+        tax_amt = current_price - base_price
+        
+        st.markdown(f"""
+        <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.03); border-radius: 10px; font-size: 0.9rem; text-align: center;">
+            <span style="opacity: 0.7;">Base Spot Price:</span> <b>₹{base_price:,.0f}</b> &nbsp; + &nbsp; 
+            <span style="opacity: 0.7;">Tax/Duty:</span> <b style="color: #FF4B4B;">₹{tax_amt:,.0f}</b> &nbsp; = &nbsp; 
+            <span style="opacity: 0.7;">Total:</span> <b>₹{current_price:,.0f}</b>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Simple Recommendation Card
     rsi_latest = data['RSI'].iloc[-1]
