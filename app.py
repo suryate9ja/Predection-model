@@ -6,120 +6,113 @@ from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import numpy as np
+import time
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Gold/Silver Price (INR)", layout="wide")
+# --- P1: APP CONFIG & THEME SETUP ---
+st.set_page_config(page_title="Gold/Silver Live", layout="wide", page_icon="🪙")
 
-st.title("🇮🇳 Gold & Silver Analytics (INR per 10g/1kg)")
-st.markdown("""
-<style>
-    /* --- FONTS & BASICS --- */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #0E1117; 
-        color: #E0E0E0;
-    }
+def inject_custom_css(choice):
+    if choice == "Gold":
+        primary = "#FFD700"  # Gold
+        secondary = "#B8860B" 
+        bg_card = "#2A2419"
+        radial_gradient = "radial-gradient(circle at top, #2C2615 0%, #0E1117 100%)"
+    else:
+        primary = "#C0C0C0"  # Silver
+        secondary = "#A9A9A9" 
+        bg_card = "#1F242D"
+        radial_gradient = "radial-gradient(circle at top, #1C2028 0%, #0E1117 100%)"
+        
+    css = f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        
+        html, body, [class*="css"] {{
+            font-family: 'Outfit', sans-serif;
+        }}
+        
+        .stApp {{
+            background: {radial_gradient};
+            background-attachment: fixed;
+        }}
+        
+        h1, h2, h3 {{
+            color: {primary} !important;
+            font-weight: 800;
+        }}
+        
+        [data-testid="stSidebar"] {{
+            background-color: rgba(22, 27, 34, 0.6);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }}
+        
+        /* METRIC CARDS */
+        div[data-testid="stMetric"] {{
+            background: linear-gradient(135deg, {bg_card} 0%, rgba(20,20,20,0.8) 100%);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }}
+        div[data-testid="stMetric"]:hover {{
+            transform: translateY(-5px);
+            border-color: {primary};
+            box-shadow: 0 15px 40px -10px {primary}33; /* 33 is opacity hex */
+        }}
+        
+        /* TABS */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 10px;
+            background-color: transparent;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255,255,255,0.03);
+            border-radius: 50px;
+            padding: 10px 24px;
+            color: #8B949E;
+            font-weight: 600;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background-color: {primary} !important;
+            color: #000000 !important;
+        }}
+        
+        /* BUTTONS */
+        .stButton button {{
+            background-color: transparent;
+            border: 1px solid {primary};
+            color: {primary};
+            transition: 0.3s;
+        }}
+        .stButton button:hover {{
+            background-color: {primary};
+            color: black;
+        }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-    /* --- SIDEBAR --- */
-    [data-testid="stSidebar"] {
-        background-color: #161B22; 
-        border-right: 1px solid #30363D;
-    }
-    
-    /* --- METRIC CARDS --- */
-    div[data-testid="stMetric"] {
-        background-color: #1F242D;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #30363D;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        transition: transform 0.2s;
-    }
-    div[data-testid="stMetric"]:hover {
-        transform: translateY(-2px);
-        border-color: #D4AF37; /* Gold Highlight */
-    }
-    
-    /* --- TABS --- */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 20px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #161B22;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        color: #8B949E;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #1F242D !important;
-        color: #D4AF37 !important;
-        border-top: 2px solid #D4AF37;
-    }
+# --- SIDEBAR & THEME SELECTION ---
+st.sidebar.title("⚙️ Config")
+metal_choice = st.sidebar.radio("Select Asset:", ["Gold", "Silver"], horizontal=True) # Radio looks cleaner for fewer ops
+period = st.sidebar.selectbox("Data Period:", ["1y", "2y", "5y", "max"], index=1) 
+inject_custom_css(metal_choice)
 
-    /* --- CUSTOM HEADERS --- */
-    h1, h2, h3 {
-        color: #FFFFFF !important;
-        font-weight: 800 !important;
-        letter-spacing: -0.5px;
-    }
-    
-    /* --- TABLES/DATAFRAMES --- */
-    [data-testid="stDataFrame"] {
-        border: 1px solid #30363D;
-        border-radius: 8px;
-    }
-    
-    /* --- PLOTLY CHART BORDER --- */
-    .js-plotly-plot .plotly .main-svg {
-        border-radius: 8px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-st.title("🪙 Gold & Silver Professional Analytics")
-st.caption("Live Spot Prices (USD) converted to INR • Machine Learning Forecasts")
-
-# --- SIDEBAR ---
-st.sidebar.header("Configuration")
-metal_choice = st.sidebar.selectbox("Select Asset:", ["Gold", "Silver"])
-# Added '2y' and 'ytd' to give more options if one fails
-period = st.sidebar.selectbox("Data Period:", ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"], index=3)
-
-# Ticker Config
+# Static Tickers
 metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
 currency_ticker = "USDINR=X"
+unit = "10 Grams" if metal_choice == "Gold" else "1 Kilogram"
+unit_short = "10g" if metal_choice == "Gold" else "1kg"
 
-# --- HELPER: FIX DATA STRUCTURE ---
+# --- HELPER FUNCTIONS ---
 def fix_data_structure(df):
-    """Cleans yfinance data: removes multi-index columns and timezones"""
-    if df.empty:
-        return df
-        
-    # 1. If columns are MultiIndex, flatten them
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    
-    # 2. Remove Timezone information to ensure dates match perfectly
-    if pd.api.types.is_datetime64_any_dtype(df.index):
-        df.index = df.index.tz_localize(None)
-    
-    
+    if df.empty: return df
+    if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+    if pd.api.types.is_datetime64_any_dtype(df.index): df.index = df.index.tz_localize(None)
     return df
 
-def calculate_bollinger_bands(data, window=20, num_std=2):
-    sma = data.rolling(window=window).mean()
-    std = data.rolling(window=window).std()
-    upper = sma + (std * num_std)
-    lower = sma - (std * num_std)
-    return upper, lower
-
-# --- HELPER: TECHNICAL INDICATORS ---
 def calculate_rsi(data, window=14):
     delta = data.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
@@ -130,244 +123,213 @@ def calculate_rsi(data, window=14):
 def calculate_sma(data, window):
     return data.rolling(window=window).mean()
 
-# --- DATA LOADING & CONVERSION FUNCTION ---
-@st.cache_data
-def load_and_convert_data(metal_sym, curr_sym, period):
-    # 1. Fetch Metal Data
-    metal_data = yf.download(metal_sym, period=period, progress=False)
-    metal_data = fix_data_structure(metal_data)
-    
-    if metal_data.empty:
-        st.error(f"Could not fetch data for {metal_sym}. The market might be closed or the ticker changed.")
-        return pd.DataFrame()
+def calculate_bollinger(data, window=20, num_std=2):
+    sma = data.rolling(window=window).mean()
+    std = data.rolling(window=window).std()
+    return sma + (std * num_std), sma - (std * num_std)
 
-    # 2. Fetch Currency Data
-    curr_data = yf.download(curr_sym, period=period, progress=False)
-    curr_data = fix_data_structure(curr_data)
+# --- DATA FETCHING (CACHED 5 MINS) ---
+@st.cache_data(ttl=300, show_spinner=False)
+def get_data(metal_sym, curr_sym, period):
+    # Metal
+    metal = yf.download(metal_sym, period=period, progress=False)
+    metal = fix_data_structure(metal)
     
-    # 3. Create a common DataFrame based on Metal dates
-    df = metal_data.copy()
+    # Currency
+    curr = yf.download(curr_sym, period=period, progress=False)
+    curr = fix_data_structure(curr)
     
-    # 4. Align Currency Data to Metal Dates
-    # SMART FILL: ffill() fills forward (Friday rate used for Sat/Sun)
-    # bfill() fills backward (if data starts on a holiday, use next day's rate)
-    aligned_currency = curr_data['Close'].reindex(df.index).ffill().bfill()
+    if metal.empty or curr.empty: return pd.DataFrame()
     
-    # 5. Conversion Factors
-    if metal_choice == "Gold":
-        # (Price_USD * USD_INR) / 31.1035 * 10
-        factor = 10 / 31.1035
-    else:
-        # (Price_USD * USD_INR) / 0.0311035
-        factor = 1 / 0.0311035
-
-    # 6. Apply Conversion safely
+    df = metal.copy()
+    aligned_currency = curr['Close'].reindex(df.index).ffill().bfill()
+    
+    # Factor
+    factor = (10 / 31.1035) if metal_choice == "Gold" else (1.0 / 0.0311035)
+    
+    # Conversion
     for col in ['Open', 'High', 'Low', 'Close']:
         df[col] = (df[col] * aligned_currency) * factor
-        
-    # Final cleanup - only drop if genuinely missing
+    
     df = df.dropna()
     df.reset_index(inplace=True)
+    
+    # Add Technicals
+    df['SMA_20'] = calculate_sma(df['Close'], 20)
+    df['SMA_50'] = calculate_sma(df['Close'], 50)
+    df['RSI'] = calculate_rsi(df['Close'], 14)
+    df['BB_Upper'], df['BB_Lower'] = calculate_bollinger(df['Close'])
+    
     return df
 
+# Main App Logic
 try:
-    data = load_and_convert_data(metal_ticker, currency_ticker, period)
+    with st.spinner(f"Updating {metal_choice} prices..."):
+        data = get_data(metal_ticker, currency_ticker, period)
     
     if data.empty:
-        st.warning("Data is currently unavailable for this specific timeframe. Please try selecting '6mo' or '2y'.")
+        st.error("Market data unavailable. Please try again later.")
         st.stop()
         
+    last_update = time.strftime("%H:%M:%S")
+    st.sidebar.success(f"Last Updated: {last_update}")
+    if st.sidebar.button("Refresh Now"):
+        st.cache_data.clear()
+        st.rerun()
+
 except Exception as e:
-    st.error(f"Error loading data: {e}")
+    st.error(f"Data Error: {e}")
     st.stop()
-
-# --- TAB LAYOUT ---
-tab1, tab2 = st.tabs(["📈 Market Dashboard (INR)", "🤖 AI Prediction"])
-
-# ==========================================
-# --- TAB LAYOUT ---
-tab1, tab2 = st.tabs(["📊 Market Dashboard", "🤖 AI Forecast Studio"])
-
-# ==========================================
-# TAB 1: PREMIMUM DASHBOARD
-# ==========================================
-with tab1:
-    unit = "10g" if metal_choice == "Gold" else "1kg"
     
-    # 1. TOP METRICS ROW
-    try:
-        current_price = data['Close'].iloc[-1]
-        prev_close = data['Close'].iloc[-2]
-        day_open = data['Open'].iloc[-1]
-        day_high = data['High'].iloc[-1]
-        day_low = data['Low'].iloc[-1]
-        
-        change = current_price - prev_close
-        pct_change = (change / prev_close) * 100
-        
-        # Volatility (Standard Deviation of last 30 days returns)
-        returns = data['Close'].pct_change().dropna()
-        volatility = returns.tail(30).std() * np.sqrt(252) * 100 # Annualized
-        
-        # Layout
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Current Price", f"₹{current_price:,.0f}", f"{pct_change:.2f}%")
-        m2.metric("Day High", f"₹{day_high:,.0f}")
-        m3.metric("Day Low", f"₹{day_low:,.0f}")
-        m4.metric("30D Volatility", f"{volatility:.1f}%")
-        m5.metric("Volume (Est.)", f"{int(data['Volume'].iloc[-1]):,}" if 'Volume' in data and data['Volume'].iloc[-1] > 0 else "N/A")
-        
-        st.divider()
-        
-        # 2. ADVANCED CHARTING
-        # Calculate Indicators for Chart
-        data['SMA_20'] = calculate_sma(data['Close'], 20)
-        data['BB_Upper'], data['BB_Lower'] = calculate_bollinger_bands(data['Close'])
-        
-        # Create Subplots: Row 1 = Price, Row 2 = Volume
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                            vertical_spacing=0.03, subplot_titles=(f'{metal_choice} Price Action', 'Volume'),
-                            row_heights=[0.7, 0.3])
+# METRICS
+current_price = data['Close'].iloc[-1]
+prev_price = data['Close'].iloc[-2]
+change = current_price - prev_price
+pct_change = (change / prev_price) * 100
+is_up = change >= 0
+color_trend = "#00FF00" if is_up else "#FF4B4B" # Bright Green or Bright Red for text
 
-        # Candlestick
-        fig.add_trace(go.Candlestick(x=data['Date'],
-                    open=data['Open'], high=data['High'],
-                    low=data['Low'], close=data['Close'], name='Price'), row=1, col=1)
-        
-        # Overlays
-        fig.add_trace(go.Scatter(x=data['Date'], y=data['SMA_20'], line=dict(color='orange', width=1), name='SMA 20'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], line=dict(color='gray', width=1, dash='dot'), name='BB Upper', showlegend=False), row=1, col=1)
-        fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], line=dict(color='gray', width=1, dash='dot'), name='BB Lower', showlegend=False), row=1, col=1)
-        
-        # Volume
-        colors = ['red' if row['Open'] - row['Close'] >= 0 else 'green' for index, row in data.iterrows()]
-        fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], marker_color=colors, name='Volume'), row=2, col=1)
-
-        # Style
-        fig.update_layout(
-            height=600,
-            xaxis_rangeslider_visible=False,
-            paper_bgcolor="#161B22",
-            plot_bgcolor="#0E1117",
-            font=dict(color="#E0E0E0"),
-            grid=dict(rows=1, columns=1, pattern="independent"),
-            margin=dict(l=20, r=20, t=30, b=20)
-        )
-        fig.update_xaxes(showgrid=True, gridcolor='#30363D')
-        fig.update_yaxes(showgrid=True, gridcolor='#30363D')
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-    except IndexError:
-        st.warning("Not enough data to display metrics.")
+# --- TABS LAYOUT ---
+tab_simple, tab_advanced, tab_ai = st.tabs(["🏠 Simple View", "📊 Advanced Analytics", "🔮 AI Forecast"])
 
 # ==========================================
-# TAB 2: AI FORECAST STUDIO
+# 1. SIMPLE VIEW (COMMON MAN)
 # ==========================================
-with tab2:
-    st.markdown("### 🤖 Predictive Analytics Engine")
+with tab_simple:
+    st.markdown(f"<h2 style='text-align: center; margin-bottom: 0px;'>Current {metal_choice} Rate</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #888;'>Price per {unit} (Includes Currency Conversion)</p>", unsafe_allow_html=True)
     
-    if len(data) > 30: 
-        # ML Prep
-        df_ml = data[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
-        if df_ml['Volume'].sum() == 0: df_ml.drop('Volume', axis=1, inplace=True)
-
-        # Re-calc indicators efficiently for ML df
-        df_ml['SMA_10'] = calculate_sma(df_ml['Close'], window=10)
-        df_ml['SMA_20'] = calculate_sma(df_ml['Close'], window=20)
-        df_ml['RSI'] = calculate_rsi(df_ml['Close'], window=14)
-        df_ml.dropna(inplace=True)
-
-        if len(df_ml) > 20:
-             df_ml['Prediction'] = df_ml['Close'].shift(-1)
-             
-             features = ['Open', 'High', 'Low', 'Close', 'SMA_10', 'SMA_20', 'RSI']
-             if 'Volume' in df_ml.columns: features.append('Volume')
-                 
-             # Train
-             df_clean = df_ml.dropna()
-             X = np.array(df_clean[features])
-             y = np.array(df_clean['Prediction'])
-             
-             x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-             rf = RandomForestRegressor(n_estimators=200, random_state=42) # Increased estimators
-             rf.fit(x_train, y_train)
-             score = rf.score(x_test, y_test)
-
-             # Predict
-             last_features = np.array(df_ml[features])[-1:]
-             prediction = rf.predict(last_features)[0]
-             
-             # --- DISPLAY RESULTS ---
-             c1, c2 = st.columns([1, 2])
-             
-             with c1:
-                 st.markdown(f"""
-                 <div style="background-color: #1F242D; padding: 20px; border-radius: 10px; border: 1px solid #30363D;">
-                     <h4 style="color: #8B949E; margin:0;">Model Confidence</h4>
-                     <h1 style="font-size: 3rem; color: #D4AF37;">{score:.0%}</h1>
-                     <p style="font-size: 0.8rem; color: #8B949E;">R² Score on Test Data</p>
-                 </div>
-                 """, unsafe_allow_html=True)
-                 
-             with c2:
-                 threshold_buy = current_price * 1.005
-                 threshold_sell = current_price * 0.995
-                 
-                 # Determine Signal
-                 if prediction > threshold_buy:
-                     signal = "BUY"
-                     color = "#2EA043" # Green
-                     msg = "Strong upside potential detected."
-                 elif prediction < threshold_sell:
-                     signal = "SELL"
-                     color = "#DA3633" # Red
-                     msg = "Downside risk detected."
-                 else:
-                     signal = "HOLD"
-                     color = "#D29922" # Yellow
-                     msg = "Market efficiency is high. Low volatility expected."
-                
-                 st.markdown(f"""
-                 <div style="background-color: #1F242D; padding: 20px; border-radius: 10px; border: 1px solid {color};">
-                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                         <div>
-                             <h4 style="color: #8B949E; margin:0;">AI Recommendation</h4>
-                             <h1 style="font-size: 3rem; color: {color}; margin: 10px 0;">{signal}</h1>
-                             <p style="color: #E0E0E0;">{msg}</p>
-                         </div>
-                         <div style="text-align: right;">
-                             <h4 style="color: #8B949E; margin:0;">Target Price</h4>
-                             <h2 style="color: #FFFFFF;">₹{prediction:,.0f}</h2>
-                             <p style="color: {color};">{(prediction-current_price):+,.0f} ({(prediction-current_price)/current_price:.2%})</p>
-                         </div>
-                     </div>
-                 </div>
-                 """, unsafe_allow_html=True)
-             
-             # Feature Importance
-             st.markdown("### 🧠 Model Logic (Feature Importance)")
-             importance = pd.DataFrame({
-                 'Feature': features,
-                 'Importance': rf.feature_importances_
-             }).sort_values(by='Importance', ascending=True)
-             
-             fig_imp = go.Figure(go.Bar(
-                 x=importance['Importance'],
-                 y=importance['Feature'],
-                 orientation='h',
-                 marker_color='#58A6FF'
-             ))
-             fig_imp.update_layout(
-                 height=300,
-                 paper_bgcolor="#0E1117",
-                 plot_bgcolor="#0E1117",
-                 font=dict(color="#E0E0E0"),
-                 margin=dict(l=0, r=0, t=0, b=0)
-             )
-             st.plotly_chart(fig_imp, use_container_width=True)
-
-        else:
-             st.warning("Needs more data for indicators.")
+    # Big Price Display
+    html_price = f"""
+    <div style="text-align: center; padding: 20px;">
+        <h1 style="font-size: 5rem; color: #FFFFFF; font-weight: 800; margin: 0;">₹{current_price:,.0f}</h1>
+        <h3 style="color: {color_trend}; margin-top: -10px;">
+            {'▲' if is_up else '▼'} ₹{abs(change):,.0f} ({pct_change:.2f}%)
+            <span style="font-size: 1rem; color: #888; font-weight: 400;">Today</span>
+        </h3>
+    </div>
+    """
+    st.markdown(html_price, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # Simple Recommendation Card
+    rsi_latest = data['RSI'].iloc[-1]
+    
+    if rsi_latest > 70:
+        advice_title = "Expensive"
+        advice_desc = "Ideally wait. Prices are very high right now."
+        advice_color = "#FF4B4B" # Red
+    elif rsi_latest < 30:
+        advice_title = "Good Time to Buy"
+        advice_desc = "Prices have fallen significantly. Good value."
+        advice_color = "#00FF00" # Green
     else:
-        st.warning("Database too small for AI training.")
+        advice_title = "Fair Price"
+        advice_desc = "Standard market rate. You can buy if needed."
+        advice_color = "#FFA500" # Orange
+        
+    st.markdown(f"""
+    <div style="background-color: rgba(255,255,255,0.05); border-left: 5px solid {advice_color}; padding: 20px; border-radius: 10px;">
+        <h3 style="color: {advice_color} !important; margin: 0;">{advice_title}</h3>
+        <p style="margin: 5px 0 0 0; font-size: 1.2rem;">{advice_desc}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 24H High/Low visually
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric("Today's High", f"₹{data['High'].iloc[-1]:,.0f}")
+    with c2:
+        st.metric("Today's Low", f"₹{data['Low'].iloc[-1]:,.0f}")
+
+# ==========================================
+# 2. ADVANCED DATA
+# ==========================================
+with tab_advanced:
+    st.markdown("### Technical Analysis & Data")
+    
+    # Advanced Plotly Chart
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                        vertical_spacing=0.03, subplot_titles=('Price & Bands', 'Volume'),
+                        row_heights=[0.7, 0.3])
+
+    # Price
+    fig.add_trace(go.Candlestick(x=data['Date'],
+                open=data['Open'], high=data['High'],
+                low=data['Low'], close=data['Close'], name='Price'), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='BB Upper', showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='BB Lower', showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['SMA_20'], line=dict(color='#FFA500', width=1.5), name='SMA 20'), row=1, col=1)
+
+    # Volume
+    colors = ['#FF4B4B' if row['Open'] - row['Close'] >= 0 else '#00FF00' for index, row in data.iterrows()]
+    fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], marker_color=colors, name='Volume'), row=2, col=1)
+
+    fig.update_layout(height=600, xaxis_rangeslider_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                      font=dict(color="#CCC"), margin=dict(l=0,r=0,t=0,b=0))
+    fig.update_xaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+    fig.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    with st.expander("📄 View Raw Dataset"):
+        st.dataframe(data.sort_values(by='Date', ascending=False), height=400, use_container_width=True)
+
+# ==========================================
+# 3. AI PREDICTION
+# ==========================================
+with tab_ai:
+    st.markdown("### 🤖 ML Price Forecast")
+    
+    if len(data) > 50:
+        # Prepare Data
+        df_ml = data[['Open', 'High', 'Low', 'Close', 'SMA_20', 'SMA_50', 'RSI', 'Volume']].dropna()
+        df_ml['Prediction'] = df_ml['Close'].shift(-1)
+        
+        # Valid Dataset
+        df_clean = df_ml.dropna()
+        
+        # Features and Target
+        features = ['Open', 'High', 'Low', 'Close', 'SMA_20', 'SMA_50', 'RSI']
+        X = df_clean[features].values
+        y = df_clean['Prediction'].values
+        
+        # Train
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X, y)
+        
+        # Predict Tomorrow
+        last_row = df_ml[features].iloc[-1].values.reshape(1, -1)
+        prediction = model.predict(last_row)[0]
+        
+        confidence = model.score(X, y) # R2 on full set (proxy for fit/confidence)
+        
+        # Display logic
+        threshold = current_price * 1.005
+        
+        if prediction > threshold:
+            sig = "BUY"
+            color = "#00FF00"
+        elif prediction < current_price * 0.995:
+            sig = "SELL"
+            color = "#FF4B4B"
+        else:
+            sig = "HOLD"
+            color = "#FFA500"
+            
+        c1, c2, c3 = st.columns(3)
+        with c1:
+             st.metric("Predicted Price (T+1)", f"₹{prediction:,.0f}", delta=f"{(prediction-current_price):.0f}")
+        with c2:
+             st.metric("Model Confidence", f"{confidence:.1%}")
+        with c3:
+            st.markdown(f"""
+            <div style="background-color: {color}22; border: 2px solid {color}; border-radius: 10px; text-align: center; padding: 10px;">
+                <h2 style="color: {color} !important; margin:0;">{sig}</h2>
+            </div>
+            """, unsafe_allow_html=True)
+            
+    else:
+        st.info("Collecting more data points for accurate prediction...")
