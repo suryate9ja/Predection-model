@@ -18,135 +18,116 @@ def get_ist_time():
     ist_now = utc_now.astimezone(pytz.timezone('Asia/Kolkata'))
     return ist_now.strftime("%d-%b-%Y %I:%M:%S %p")
 
-def inject_custom_css(metal_choice, theme_mode):
-    # Base Colors
+def inject_custom_css(metal_choice):
+    # Apple HIG Colors
+    bg_main = "#F5F5F7" # Apple Light Gray
+    bg_card = "#FFFFFF" # Pure White
+    text_primary = "#1D1D1F" # Apple Black
+    text_secondary = "#86868B" # Apple Gray
+    
     if metal_choice == "Gold":
-        accent = "#FFD700" if theme_mode == "Dark" else "#B8860B" # Bright Gold vs Dark Gold
-        accent_secondary = "#D4AF37"
+        accent = "#B8860B" # Darker Gold for text readability on white
+        accent_bg = "rgba(255, 215, 0, 0.1)" # Light Gold background
     else:
-        accent = "#00BFFF" if theme_mode == "Dark" else "#4682B4" # Cyan vs Steel Blue
-        accent_secondary = "#C0C0C0"
-
-    # Theme Colors
-    if theme_mode == "Dark":
-        bg_main = "radial-gradient(circle at top, #1F242D 0%, #0E1117 100%)"
-        bg_card = "rgba(255,255,255,0.05)"
-        text_primary = "#FFFFFF"
-        text_secondary = "#8B949E"
-        card_border = "rgba(255,255,255,0.1)"
-        sidebar_bg = "rgba(14, 17, 23, 0.9)"
-    else:
-        bg_main = "linear-gradient(135deg, #F0F2F6 0%, #FFFFFF 100%)"
-        bg_card = "#FFFFFF"
-        text_primary = "#000000"
-        text_secondary = "#31333F"
-        card_border = "rgba(0,0,0,0.1)"
-        sidebar_bg = "#F0F2F6"
+        # User wants "Silver" color. Silver Text on white is bad. We use a Slate Gray/Blue.
+        accent = "#5E6C84" 
+        accent_bg = "rgba(94, 108, 132, 0.1)"
 
     css = f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
-        
+        /* APPLE SYSTEM FONTS */
         html, body, [class*="css"] {{
-            font-family: 'Outfit', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: {text_primary};
         }}
         
         .stApp {{
-            background: {bg_main};
-            background-attachment: fixed;
+            background-color: {bg_main};
         }}
         
         h1, h2, h3, h4 {{
             color: {text_primary} !important;
-            font-weight: 800;
+            font-weight: 600; /* Apple uses SemiBold mostly */
+            letter-spacing: -0.01em;
         }}
         
+        /* FROSTED GLASS SIDEBAR */
         [data-testid="stSidebar"] {{
-            background-color: {sidebar_bg};
-            border-right: 1px solid {card_border};
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-right: 1px solid rgba(0,0,0,0.05);
         }}
         
-        /* METRIC CARDS */
+        /* APPLE STYLE CARDS */
         div[data-testid="stMetric"] {{
-            background: {bg_card};
-            border: 1px solid {card_border};
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
+            background-color: {bg_card};
+            border: none;
+            border-radius: 18px; /* Apple rounded corners */
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Subtle shadow */
+            transition: transform 0.2s ease;
         }}
         div[data-testid="stMetric"]:hover {{
-            transform: translateY(-5px);
-            border-color: {accent};
-            box-shadow: 0 10px 20px {accent}33;
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         }}
         div[data-testid="stMetric"] label {{
             color: {text_secondary} !important;
+            font-size: 0.9rem;
+            font-weight: 500;
         }}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
             color: {text_primary} !important;
-        }}
-
-        /* TABS */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            background-color: {bg_card};
-            border: 1px solid {card_border};
-            border-radius: 50px;
-            padding: 10px 24px;
-            color: {text_secondary};
             font-weight: 600;
         }}
+        
+        /* TABS - PILL STYLE */
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 8px;
+            background-color: rgba(118, 118, 128, 0.12); /* Apple Segmented Control BG */
+            padding: 4px;
+            border-radius: 99px;
+            width: fit-content;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            background-color: transparent;
+            border: none;
+            border-radius: 99px;
+            padding: 8px 20px;
+            color: {text_primary};
+            font-weight: 500;
+            font-size: 0.9rem;
+        }}
         .stTabs [aria-selected="true"] {{
-            background-color: {accent} !important;
-            color: {'#000000' if theme_mode == 'Dark' else '#FFFFFF'} !important;
+            background-color: {bg_card} !important; /* White active pill */
+            color: {text_primary} !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }}
         
-        /* CUSTOM TEXT ACCENTS */
-        .accent-text {{
-            color: {accent};
+        /* CUSTOM ACCENTS */
+        .color-accent {{
+            color: {accent} !important;
         }}
+        .bg-accent {{
+            background-color: {accent_bg};
+        }}
+        
+        /* CHECKBOX/TOGGLE */
+        [data-baseweb="checkbox"] div {{
+            background-color: {accent} !important;
+        }}
+        
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-    return accent
+    return accent, accent_bg, text_primary
 
 # --- SIDEBAR CONFIG ---
-st.sidebar.title("⚙️ Personalize")
+st.sidebar.title(" Analysis")
+metal_choice = st.sidebar.radio("Select Asset:", ["Gold", "Silver"], horizontal=True)
 
-# LIVE CLOCK
-st.sidebar.markdown(f"""
-<div style="background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.2);">
-    <p style="margin:0; font-size: 0.8rem; opacity: 0.8;">Current Time (IST)</p>
-    <p style="margin:0; font-size: 1.1rem; font-weight: bold; color: #FFA500;">{get_ist_time()}</p>
-</div>
-""", unsafe_allow_html=True)
+accent_c, accent_bg, text_c = inject_custom_css(metal_choice)
 
-# AUTO REFRESH LOGIC
-if 'last_run' not in st.session_state:
-    st.session_state.last_run = time.time()
-
-refresh_in_sec = 300 # 5 mins
-now = time.time()
-if now - st.session_state.last_run > refresh_in_sec:
-    st.session_state.last_run = now
-    st.rerun()
-
-# Count down text (Optional, keep simple for now)
-if st.sidebar.checkbox("Actively Auto-Refresh (5m)", value=True):
-    time_left = int(refresh_in_sec - (now - st.session_state.last_run))
-    if time_left <= 0:
-        st.rerun()
-    # Simple trick to force re-runs to update the clock if needed, but might be too aggressive.
-    # We will rely on user interaction or the check above on load.
-
-theme_mode = st.sidebar.radio("Theme:", ["Dark", "Light"], horizontal=True)
-metal_choice = st.sidebar.radio("Asset:", ["Gold", "Silver"], horizontal=True)
-
-accent_color = inject_custom_css(metal_choice, theme_mode)
 
 period = st.sidebar.selectbox("History:", ["1mo", "6mo", "1y", "5y", "max"], index=2) 
 
@@ -293,26 +274,26 @@ with tab_simple:
         k24, k22 = st.columns(2)
         with k24:
              st.markdown(f"""
-             <div style="background-color: {accent_color}11; border: 1px solid {accent_color}; border-radius: 10px; padding: 15px; text-align: center;">
-                 <h4 style="margin:0; color: {accent_color};">24 Karat (99.9%)</h4>
-                 <h1 style="margin:0; font-size: 2.5rem;">₹{price_24k:,.0f}</h1>
-                 <p style="margin:0; font-size: 0.8rem; opacity: 0.7;">Pure Gold Coin/Bar</p>
+             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                 <h4 style="margin:0; color: {accent_c};">24 Karat (99.9%)</h4>
+                 <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_24k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.9rem; color: #86868B;">Pure Gold Coin/Bar</p>
              </div>
              """, unsafe_allow_html=True)
         with k22:
              st.markdown(f"""
-             <div style="background-color: {accent_color}11; border: 1px dashed {accent_color}; border-radius: 10px; padding: 15px; text-align: center;">
-                 <h4 style="margin:0; color: {accent_color};">22 Karat (91.6%)</h4>
-                 <h1 style="margin:0; font-size: 2.5rem;">₹{price_22k:,.0f}</h1>
-                 <p style="margin:0; font-size: 0.8rem; opacity: 0.7;">Standard Jewellery</p>
+             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                 <h4 style="margin:0; color: {accent_c};">22 Karat (91.6%)</h4>
+                 <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_22k:,.0f}</h1>
+                 <p style="margin:0; font-size: 0.9rem; color: #86868B;">Standard Jewellery</p>
              </div>
              """, unsafe_allow_html=True)
     else:
-        # Silver Display (Just one large block)
+        # Silver Display
         st.markdown(f"""
-             <div style="background-color: {accent_color}11; border: 1px solid {accent_color}; border-radius: 10px; padding: 20px; text-align: center;">
-                 <h1 style="margin:0; font-size: 4rem;">₹{current_price:,.0f}</h1>
-                 <p style="margin:0; font-size: 1rem; opacity: 0.7;">Silver (99.9%) per Kg</p>
+             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 30px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                 <h1 style="margin:0; font-size: 4.5rem; color: #1D1D1F;">₹{current_price:,.0f}</h1>
+                 <p style="margin:0; font-size: 1.1rem; color: #86868B;">Silver (99.9%) per Kg</p>
              </div>
              """, unsafe_allow_html=True)
 
@@ -325,7 +306,7 @@ with tab_simple:
         <h3 style="color: {color_trend};">
             {'▲' if is_up else '▼'} ₹{abs(change):,.0f} ({pct_change:.2f}%)
         </h3>
-        <p>Market Movement Today</p>
+        <p style="color: #86868B;">Market Movement Today</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -335,10 +316,10 @@ with tab_simple:
         tax_amt = current_price - base_price
         
         st.markdown(f"""
-        <div style="margin-top: 20px; padding: 15px; background-color: rgba(255,255,255,0.03); border-radius: 10px; font-size: 0.9rem; text-align: center;">
-            <span style="opacity: 0.7;">Base Spot Price:</span> <b>₹{base_price:,.0f}</b> &nbsp; + &nbsp; 
-            <span style="opacity: 0.7;">Tax/Duty:</span> <b style="color: #FF4B4B;">₹{tax_amt:,.0f}</b> &nbsp; = &nbsp; 
-            <span style="opacity: 0.7;">Total:</span> <b>₹{current_price:,.0f}</b>
+        <div style="margin-top: 20px; padding: 15px; background-color: #FFFFFF; border-radius: 12px; font-size: 0.9rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <span style="color: #86868B;">Base Spot:</span> <b>₹{base_price:,.0f}</b> &nbsp; + &nbsp; 
+            <span style="color: #86868B;">Tax:</span> <b style="color: #FF4B4B;">₹{tax_amt:,.0f}</b> &nbsp; = &nbsp; 
+            <span style="color: #86868B;">Total:</span> <b style="color: #1D1D1F;">₹{current_price:,.0f}</b>
         </div>
         """, unsafe_allow_html=True)
     
