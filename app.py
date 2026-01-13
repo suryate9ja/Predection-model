@@ -123,7 +123,7 @@ with tab1:
         
         # FIXED: Updated for 2026/Streamlit new standards
         fig.update_layout(title=f'{metal_choice} Price in INR', yaxis_title=f'Price (₹)', xaxis_rangeslider_visible=False)
-        st.plotly_chart(fig, width=None) # 'width=None' makes it responsive
+        st.plotly_chart(fig, width="stretch") # 'width="stretch"' makes it responsive
     except IndexError:
         st.warning("Not enough data to display metrics.")
 
