@@ -19,7 +19,8 @@ This dashboard converts global Spot Prices (USD/oz) to **Indian Rupees (INR)**.
 # --- SIDEBAR ---
 st.sidebar.header("Configuration")
 metal_choice = st.sidebar.selectbox("Select Asset:", ["Gold", "Silver"])
-period = st.sidebar.selectbox("Data Period:", ["1mo", "6mo", "1y", "5y", "max"], index=2)
+# Added '2y' and 'ytd' to give more options if one fails
+period = st.sidebar.selectbox("Data Period:", ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"], index=3)
 
 # Ticker Config
 metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
@@ -28,12 +29,16 @@ currency_ticker = "USDINR=X"
 # --- HELPER: FIX DATA STRUCTURE ---
 def fix_data_structure(df):
     """Cleans yfinance data: removes multi-index columns and timezones"""
-    # 1. If columns are MultiIndex (e.g., ('Close', 'GC=F')), flatten them
+    if df.empty:
+        return df
+        
+    # 1. If columns are MultiIndex, flatten them
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     
     # 2. Remove Timezone information to ensure dates match perfectly
-    df.index = df.index.tz_localize(None)
+    if pd.api.types.is_datetime64_any_dtype(df.index):
+        df.index = df.index.tz_localize(None)
     
     return df
 
@@ -44,6 +49,10 @@ def load_and_convert_data(metal_sym, curr_sym, period):
     metal_data = yf.download(metal_sym, period=period, progress=False)
     metal_data = fix_data_structure(metal_data)
     
+    if metal_data.empty:
+        st.error(f"Could not fetch data for {metal_sym}. The market might be closed or the ticker changed.")
+        return pd.DataFrame()
+
     # 2. Fetch Currency Data
     curr_data = yf.download(curr_sym, period=period, progress=False)
     curr_data = fix_data_structure(curr_data)
@@ -52,9 +61,9 @@ def load_and_convert_data(metal_sym, curr_sym, period):
     df = metal_data.copy()
     
     # 4. Align Currency Data to Metal Dates
-    # We reindex the currency data to match the metal data's dates
-    # 'ffill' fills missing weekend currency rates with Friday's rate
-    aligned_currency = curr_data['Close'].reindex(df.index).ffill()
+    # SMART FILL: ffill() fills forward (Friday rate used for Sat/Sun)
+    # bfill() fills backward (if data starts on a holiday, use next day's rate)
+    aligned_currency = curr_data['Close'].reindex(df.index).ffill().bfill()
     
     # 5. Conversion Factors
     if metal_choice == "Gold":
@@ -65,14 +74,10 @@ def load_and_convert_data(metal_sym, curr_sym, period):
         factor = 1 / 0.0311035
 
     # 6. Apply Conversion safely
-    # We iterate through columns and create new Series for the calculation
     for col in ['Open', 'High', 'Low', 'Close']:
-        # Ensure we are working with 1D Series
-        price_series = df[col]
+        df[col] = (df[col] * aligned_currency) * factor
         
-        # Calculate in INR
-        df[col] = (price_series * aligned_currency) * factor
-        
+    # Final cleanup - only drop if genuinely missing
     df = df.dropna()
     df.reset_index(inplace=True)
     return df
@@ -80,9 +85,8 @@ def load_and_convert_data(metal_sym, curr_sym, period):
 try:
     data = load_and_convert_data(metal_ticker, currency_ticker, period)
     
-    # Double check if data is empty after processing
     if data.empty:
-        st.error("Data loaded but appears empty. Try a different time period.")
+        st.warning("Data is currently unavailable for this specific timeframe. Please try selecting '6mo' or '2y'.")
         st.stop()
         
 except Exception as e:
@@ -117,10 +121,11 @@ with tab1:
                     open=data['Open'], high=data['High'],
                     low=data['Low'], close=data['Close'], name='Price in INR'))
         
+        # FIXED: Updated for 2026/Streamlit new standards
         fig.update_layout(title=f'{metal_choice} Price in INR', yaxis_title=f'Price (₹)', xaxis_rangeslider_visible=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=None) # 'width=None' makes it responsive
     except IndexError:
-        st.warning("Not enough data to display metrics for the selected period.")
+        st.warning("Not enough data to display metrics.")
 
 # ==========================================
 # TAB 2: AI PREDICTION
@@ -128,9 +133,14 @@ with tab1:
 with tab2:
     st.subheader(f"🔮 AI Prediction (Next Day in INR)")
     
-    if len(data) > 10: # Ensure enough data for ML
+    if len(data) > 20: 
         # ML Prep
         df_ml = data[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
+        
+        # Handle zero volume (common in forex/calculated data)
+        if df_ml['Volume'].sum() == 0:
+             df_ml.drop('Volume', axis=1, inplace=True)
+
         df_ml['Prediction'] = df_ml['Close'].shift(-1)
         
         X = np.array(df_ml.drop(['Prediction'], axis=1))[:-1]
@@ -156,7 +166,7 @@ with tab2:
             st.write(f"# ₹{prediction:,.0f}")
         
         with col_pred2:
-            threshold = current_price * 1.005 # 0.5% buffer
+            threshold = current_price * 1.005
             st.write("### AI Recommendation:")
             if prediction > threshold:
                 st.success("🟢 **BUY SIGNAL**")
