@@ -35,6 +35,18 @@ def inject_custom_css(metal_choice):
 
     css = f"""
     <style>
+        /* ANIMATIONS */
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        
+        @keyframes pulse {{
+            0% {{ box-shadow: 0 0 0 0 {accent}33; }}
+            70% {{ box-shadow: 0 0 0 10px rgba(0,0,0,0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(0,0,0,0); }}
+        }}
+    
         /* APPLE SYSTEM FONTS */
         html, body, [class*="css"] {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -47,76 +59,59 @@ def inject_custom_css(metal_choice):
         
         h1, h2, h3, h4 {{
             color: {text_primary} !important;
-            font-weight: 600; /* Apple uses SemiBold mostly */
-            letter-spacing: -0.01em;
+            font-weight: 600;
+            letter-spacing: -0.5px; /* Tighter headers */
         }}
         
         /* FROSTED GLASS SIDEBAR */
         [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.8);
-            backdrop-filter: saturate(180%) blur(20px);
-            border-right: 1px solid rgba(0,0,0,0.05);
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: saturate(180%) blur(25px); /* Stronger blur */
+            border-right: 1px solid rgba(0,0,0,0.03);
         }}
         
-        /* APPLE STYLE CARDS */
+        /* ULTRA PREMIUM CARDS */
         div[data-testid="stMetric"] {{
             background-color: {bg_card};
             border: none;
-            border-radius: 18px; /* Apple rounded corners */
+            border-radius: 20px;
             padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03); /* Subtle shadow */
-            transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            animation: fadeIn 0.6s ease-out both; /* Entry Animation */
         }}
         div[data-testid="stMetric"]:hover {{
-            transform: scale(1.02);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08); /* Deep glow on hover */
         }}
+        
+        /* CUSTOM WHITE CARDS (Manually created ones) */
+        .premium-card {{
+            background-color: #FFFFFF;
+            border-radius: 20px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
+            animation: fadeIn 0.6s ease-out both;
+        }}
+        .premium-card:hover {{
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+        }}
+        
         div[data-testid="stMetric"] label {{
             color: {text_secondary} !important;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
             color: {text_primary} !important;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 2rem !important;
         }}
-        
-        /* TABS - PILL STYLE */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 8px;
-            background-color: rgba(118, 118, 128, 0.12); /* Apple Segmented Control BG */
-            padding: 4px;
-            border-radius: 99px;
-            width: fit-content;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            background-color: transparent;
-            border: none;
-            border-radius: 99px;
-            padding: 8px 20px;
-            color: {text_primary};
-            font-weight: 500;
-            font-size: 0.9rem;
-        }}
-        .stTabs [aria-selected="true"] {{
-            background-color: {bg_card} !important; /* White active pill */
-            color: {text_primary} !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-        }}
-        
-        /* CUSTOM ACCENTS */
-        .color-accent {{
-            color: {accent} !important;
-        }}
-        .bg-accent {{
-            background-color: {accent_bg};
-        }}
-        
-        /* CHECKBOX/TOGGLE */
-        [data-baseweb="checkbox"] div {{
-            background-color: {accent} !important;
-        }}
-        
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -274,7 +269,7 @@ with tab_simple:
         k24, k22 = st.columns(2)
         with k24:
              st.markdown(f"""
-             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+             <div class="premium-card">
                  <h4 style="margin:0; color: {accent_c};">24 Karat (99.9%)</h4>
                  <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_24k:,.0f}</h1>
                  <p style="margin:0; font-size: 0.9rem; color: #86868B;">Pure Gold Coin/Bar</p>
@@ -282,7 +277,7 @@ with tab_simple:
              """, unsafe_allow_html=True)
         with k22:
              st.markdown(f"""
-             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+             <div class="premium-card">
                  <h4 style="margin:0; color: {accent_c};">22 Karat (91.6%)</h4>
                  <h1 style="margin:0; font-size: 3rem; color: #1D1D1F;">₹{price_22k:,.0f}</h1>
                  <p style="margin:0; font-size: 0.9rem; color: #86868B;">Standard Jewellery</p>
@@ -291,7 +286,7 @@ with tab_simple:
     else:
         # Silver Display
         st.markdown(f"""
-             <div style="background-color: #FFFFFF; border-radius: 18px; padding: 30px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+             <div class="premium-card">
                  <h1 style="margin:0; font-size: 4.5rem; color: #1D1D1F;">₹{current_price:,.0f}</h1>
                  <p style="margin:0; font-size: 1.1rem; color: #86868B;">Silver (99.9%) per Kg</p>
              </div>
@@ -316,7 +311,7 @@ with tab_simple:
         tax_amt = current_price - base_price
         
         st.markdown(f"""
-        <div style="margin-top: 20px; padding: 15px; background-color: #FFFFFF; border-radius: 12px; font-size: 0.9rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div class="premium-card" style="margin-top: 20px;">
             <span style="color: #86868B;">Base Spot:</span> <b>₹{base_price:,.0f}</b> &nbsp; + &nbsp; 
             <span style="color: #86868B;">Tax:</span> <b style="color: #FF4B4B;">₹{tax_amt:,.0f}</b> &nbsp; = &nbsp; 
             <span style="color: #86868B;">Total:</span> <b style="color: #1D1D1F;">₹{current_price:,.0f}</b>
@@ -359,30 +354,58 @@ with tab_simple:
 with tab_advanced:
     st.markdown("### Technical Analysis & Data")
     
-    # Advanced Plotly Chart
+    # Advanced    # PLOTLY CHART - PREMIUM STYLE
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                        vertical_spacing=0.03, subplot_titles=('Price & Bands', 'Volume'),
-                        row_heights=[0.7, 0.3])
+                        vertical_spacing=0.05, row_heights=[0.7, 0.3])
 
-    # Price
-    fig.add_trace(go.Candlestick(x=data['Date'],
-                open=data['Open'], high=data['High'],
-                low=data['Low'], close=data['Close'], name='Price'), row=1, col=1)
+    # Main Price Area
+    # Use fill='tozeroy' for the gradient look (Plotly defaults are solid but better than line)
+    # To get real gradient we need more complex rgba, but 'tozeroy' with opacity is good enough for "Stocks" look
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], mode='lines', name='Price',
+                             line=dict(color=accent_c, width=2),
+                             fill='tozeroy', 
+                             fillcolor=f"rgba{tuple(int(accent_c.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)) + (0.1,)}"), # Hex to RGBA hack
+                  row=1, col=1)
+                  
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['SMA_20'], mode='lines', name='SMA 20',
+                             line=dict(color='rgba(255, 165, 0, 0.5)', width=1)),
+                  row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='BB Upper', showlegend=False), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='BB Lower', showlegend=False), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data['Date'], y=data['SMA_20'], line=dict(color='#FFA500', width=1.5), name='SMA 20'), row=1, col=1)
+    # Bollinger Bands (Subtle)
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Upper'], mode='lines', name='BB Upper',
+                             line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5), showlegend=False),
+                  row=1, col=1)
+    fig.add_trace(go.Scatter(x=data['Date'], y=data['BB_Lower'], mode='lines', name='BB Lower',
+                             line=dict(color='rgba(128, 128, 128, 0.3)', width=0.5), fill='tonexty',
+                             fillcolor='rgba(128, 128, 128, 0.05)', showlegend=False),
+                  row=1, col=1)
 
-    # Volume
-    colors = ['#FF4B4B' if row['Open'] - row['Close'] >= 0 else '#00FF00' for index, row in data.iterrows()]
-    fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], marker_color=colors, name='Volume'), row=2, col=1)
+    # Volume Bar
+    # Color bars based on Up/Down
+    colors = [
+        '#00C805' if row['Open'] - row['Close'] >= 0 else '#FF5000' 
+        for index, row in data.iterrows() 
+    ]
+    fig.add_trace(go.Bar(x=data['Date'], y=data['Volume'], name='Volume', marker_color=colors, opacity=0.3),
+                  row=2, col=1)
 
-    fig.update_layout(height=600, xaxis_rangeslider_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                      font=dict(color="#CCC"), margin=dict(l=0,r=0,t=0,b=0))
-    fig.update_xaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+    fig.update_layout(
+        height=500,
+        margin=dict(l=20, r=20, t=30, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        hovermode='x unified',
+        dragmode='pan',
+        showlegend=False
+    )
     
-    st.plotly_chart(fig, use_container_width=True)
+    # Minimalist Axes
+    fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False, row=1, col=1) # Hide X on top chart
+    fig.update_xaxes(showgrid=False, zeroline=False, color='#86868B', row=2, col=1)
+    fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.05)', zeroline=False, color='#86868B', row=1, col=1) # Faint grid Y
+    fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False, row=2, col=1) # Hide Y on vol
+
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
     with st.expander("📄 View Raw Dataset"):
         st.dataframe(data.sort_values(by='Date', ascending=False), height=400, use_container_width=True)
