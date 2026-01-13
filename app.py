@@ -485,8 +485,12 @@ with tab_ai:
         threshold = current_price * 1.005
         
         if prediction > current_price:
+            sig = "BUY"
+            color = "#00FF00"
             st.success(f"📈 AI Signal: BULLISH (Target: ₹{prediction:,.0f})")
         else:
+            sig = "SELL"
+            color = "#FF4B4B"
             st.error(f"📉 AI Signal: BEARISH (Target: ₹{prediction:,.0f})")
             
         c1, c2, c3 = st.columns(3)
