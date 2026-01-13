@@ -150,21 +150,20 @@ accent_color = inject_custom_css(metal_choice, theme_mode)
 
 period = st.sidebar.selectbox("History:", ["1mo", "6mo", "1y", "5y", "max"], index=2) 
 
-# --- LOCATION SELECTOR (TOP RIGHT) ---
+# --- LOCATION SELECTOR & TAX TOGGLE ---
 # We use columns to put this in the "header" area visually
-c_title, c_loc = st.columns([3, 1])
+c_title, c_loc, c_tax = st.columns([3, 1, 1])
 with c_title:
     st.title(f"{metal_choice} Dashboard")
 with c_loc:
     locations = ["India (National)", "Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu", "Maharashtra", "Delhi", "USA", "UK", "UAE", "Australia", "Canada"]
-    location = st.selectbox("📍 Location / Tax Zone", locations, index=0)
+    location = st.selectbox("📍 Location", locations, index=0)
+with c_tax:
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # Access alignment hack
+    show_tax = st.toggle("Include Taxes", value=True)
 
-# Static Tickers - CHANGED TO SPOT
-# Gold Spot: XAUUSD=X, Silver Spot: XAGUSD=X
+# Static Tickers - REVERT TO FUTURES (MORE RELIABLE)
 metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
-# Try switching to Spot, but if issues, we might need a fallback.
-# For now, let's stick to XAUUSD=X as requested to fix discrepancy.
-metal_ticker = "XAUUSD=X" if metal_choice == "Gold" else "XAGUSD=X"
 
 currency_ticker = "USDINR=X"
 unit = "10 Grams" if metal_choice == "Gold" else "1 Kilogram"
@@ -249,8 +248,10 @@ else:
 
 # Main App Logic
 try:
+    final_tax_factor = tax_factor if show_tax else 1.0
+    
     with st.spinner(f"Fetching rates for {location}..."):
-        data = get_data(metal_ticker, currency_ticker, period, location_factor=tax_factor)
+        data = get_data(metal_ticker, currency_ticker, period, location_factor=final_tax_factor)
     
     if data.empty:
         st.error("Market data unavailable. Please try again later.")
