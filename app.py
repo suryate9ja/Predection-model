@@ -62,7 +62,7 @@ st.markdown("""
 
     /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0px;
+        gap: 20px;
         background: transparent;
         border-bottom: 1px solid rgba(255,255,255,0.1);
         padding: 0;
