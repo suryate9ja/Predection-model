@@ -9,77 +9,82 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Gold/Silver AI Insight", layout="wide", page_icon="✨")
+st.set_page_config(page_title="Gold & Silver Analytics", layout="wide", page_icon="None")
 
-# Custom CSS for "Ultra Clean" look
+# Custom CSS for "Premium Glass" look
 st.markdown("""
 <style>
-    /* Global Glassmorphism Background */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+    /* Global Settings */
+    html, body, [class*="css"]  {
+        font-family: 'Inter', sans-serif;
+    }
     
     .stApp {
-        background: radial-gradient(circle at 10% 20%, rgb(30, 30, 30) 0%, rgb(0, 0, 0) 90%);
-        color: white;
+        background: radial-gradient(circle at top right, #1a1a1a 0%, #000000 100%);
+        color: #ffffff;
     }
 
-    /* Glass Effect Cards */
+    /* Glass Cards */
     .metric-card {
-        background: rgba(255, 255, 255, 0.05); /* Ultra translucent */
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        padding: 24px;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 30px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
         text-align: center;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    /* Hover Animation */
     .metric-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        border-color: rgba(255, 215, 0, 0.3); /* Gold hint on hover */
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
     .metric-value {
-        font-size: 2.2em;
-        font-weight: 700;
-        background: linear-gradient(45deg, #FFD700, #FDB931);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-shadow: 0px 4px 10px rgba(255, 215, 0, 0.2);
+        font-size: 2.5em;
+        font-weight: 300;
+        letter-spacing: -1px;
+        color: #ffffff;
+        margin: 10px 0;
     }
     
     .metric-label {
-        color: #E0E0E0;
-        font-size: 1.1em;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #888888;
+        font-weight: 600;
     }
 
     /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 8px;
-        border-radius: 12px;
+        gap: 0px;
+        background: transparent;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 0;
     }
     
     .stTabs [data-baseweb="tab"] {
-        height: 45px;
-        border-radius: 8px;
-        color: #AAAAAA;
-        transition: all 0.3s ease;
+        height: 60px;
+        background: transparent;
+        color: #888888;
+        font-family: 'Inter', sans-serif;
+        font-weight: 400;
+        border: none;
     }
     
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: rgba(255, 215, 0, 0.15) !important;
-        color: #FFD700 !important;
-        font-weight: bold;
+        color: #ffffff !important;
+        background: transparent !important;
+        border-bottom: 2px solid #ffffff;
+        font-weight: 600;
     }
 
-    /* Clean up Streamlit UI */
+    /* Clean Streamlit Components */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -87,11 +92,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("✨ Market Overview")
-st.markdown("### 🇮🇳 Live Indian Gold & Silver Rates")
+st.title("Market Overview")
+st.markdown("Live Prices & Analytics for Indian Markets")
 
 # --- SIDEBAR ---
-st.sidebar.header("⚙️ Preferences")
+st.sidebar.markdown("### PREFERENCES")
 
 # Indian States List
 indian_states = [
@@ -103,12 +108,12 @@ indian_states = [
     "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", 
     "Ladakh", "Lakshadweep", "Puducherry"
 ]
-selected_state = st.sidebar.selectbox("📍 Your Location:", indian_states)
+selected_state = st.sidebar.selectbox("Location", indian_states)
 
 # Tax Toggle
-tax_option = st.sidebar.radio("💵 Price Display:", ["Exclude Tax", "Include GST (3%)"])
+tax_option = st.sidebar.radio("Display Mode", ["Base Price", "Include GST (3%)"])
 
-period = st.sidebar.selectbox("📅 History:", ["1y", "2y", "5y", "max"], index=1)
+period = st.sidebar.selectbox("TIMEFRAME", ["1y", "2y", "5y", "max"], index=1)
 
 # API Tickers
 gold_ticker = "GC=F"
@@ -190,27 +195,27 @@ except Exception as e:
 # 1. Key Metrics Row
 col1, col2, col3 = st.columns(3)
 
-def display_card(col, title, price, delta, unit, color="gold"):
+def display_card(col, title, price, delta, unit):
     with col:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">{title}</div>
-            <div class="metric-value" style="color: {color};">₹{price:,.0f}</div>
-            <div style="color: {'#4CAF50' if delta > 0 else '#FF5252'};">
-                {("▲" if delta > 0 else "▼")} ₹{abs(delta):,.0f}
+            <div class="metric-value">₹{price:,.0f}</div>
+            <div style="color: {'#4CAF50' if delta > 0 else '#FF5252'}; font-size: 0.9em;">
+                {("+" if delta > 0 else "")}{delta:,.0f}
             </div>
-            <div style="font-size: 0.8em; color: #666;">per {unit}</div>
+            <div style="font-size: 0.7em; color: #666; margin-top: 5px;">PER {unit.upper()}</div>
         </div>
         """, unsafe_allow_html=True)
 
-display_card(col1, "Gold (24K) - Pure", current_gold_24k, delta_gold, "10g", "#FFD700")
-display_card(col2, "Gold (22K) - Jewellery", current_gold_22k, delta_gold * 0.916, "10g", "#E6C200")
-display_card(col3, "Silver (Fine)", current_silver_1kg, delta_silver, "1kg", "#C0C0C0")
+display_card(col1, "Gold 24K", current_gold_24k, delta_gold, "10g")
+display_card(col2, "Gold 22K", current_gold_22k, delta_gold * 0.916, "10g")
+display_card(col3, "Silver", current_silver_1kg, delta_silver, "1kg")
 
 st.markdown("---")
 
 # 2. Tabs for Charts & Advanced Features
-main_tab1, main_tab2, main_tab3 = st.tabs(["📊 Price Trends", "🔮 AI Forecast", "📰 Market News"])
+main_tab1, main_tab2, main_tab3 = st.tabs(["Prices", "AI Forecast", "News"])
 
 with main_tab1:
     chart_view = st.radio("Select View:", ["Gold Trend", "Silver Trend"], horizontal=True)
@@ -249,7 +254,7 @@ def prepare_lstm_data(series, lookback=60):
     return x_train, y_train, scaler, scaled_data
 
 with main_tab2:
-    st.subheader("🤖 Artificial Intelligence Forecast")
+    st.subheader("Artificial Intelligence Forecast")
     st.write("Our AI analyzes global market patterns to predict tomorrow's trends.")
     
     col_a, col_b = st.columns([1, 3])
@@ -308,7 +313,7 @@ with main_tab2:
                 st.error(f"AI Error: {e}")
 
 with main_tab3:
-    st.subheader("📰 Live Market News")
+    st.subheader("Live Market News")
     try:
         # Default to Gold news, or mix? Let's just show Gold for now as primary
         ticker = yf.Ticker(gold_ticker)
