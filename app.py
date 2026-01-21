@@ -11,12 +11,47 @@ from tensorflow.keras.layers import Dense, LSTM
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Gold/Silver AI Insight", layout="wide", page_icon="✨")
 
-st.title("✨ Gold & Silver Market Intelligence")
-st.markdown("### Real-time prices, AI forecasts, and market news for India 🇮🇳")
+# Custom CSS for "Ultra Clean" look
+st.markdown("""
+<style>
+    .metric-card {
+        background-color: #1E1E1E;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        text-align: center;
+    }
+    .metric-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #FFD700;
+    }
+    .metric-label {
+        color: #AAAAAA;
+        font-size: 1.1em;
+    }
+    /* Hide Streamlit components */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("✨ Market Overview")
+st.markdown("### 🇮🇳 Live Indian Gold & Silver Rates")
 
 # --- SIDEBAR ---
-st.sidebar.header("⚙️ Settings")
-metal_choice = st.sidebar.selectbox("Select Asset:", ["Gold", "Silver"])
+st.sidebar.header("⚙️ Preferences")
 
 # Indian States List
 indian_states = [
@@ -28,14 +63,16 @@ indian_states = [
     "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", 
     "Ladakh", "Lakshadweep", "Puducherry"
 ]
-selected_state = st.sidebar.selectbox("Your Location:", indian_states)
+selected_state = st.sidebar.selectbox("📍 Your Location:", indian_states)
 
 # Tax Toggle
-tax_option = st.sidebar.radio("Price Display:", ["Exclude Tax", "Include GST (3%)"])
+tax_option = st.sidebar.radio("💵 Price Display:", ["Exclude Tax", "Include GST (3%)"])
 
-period = st.sidebar.selectbox("History:", ["1y", "2y", "5y", "max"], index=1)
+period = st.sidebar.selectbox("📅 History:", ["1y", "2y", "5y", "max"], index=1)
 
-metal_ticker = "GC=F" if metal_choice == "Gold" else "SI=F"
+# API Tickers
+gold_ticker = "GC=F"
+silver_ticker = "SI=F"
 currency_ticker = "USDINR=X"
 
 # --- DATA PREP ---
@@ -48,47 +85,116 @@ def fix_data_structure(df):
     return df
 
 @st.cache_data
-def load_and_convert_data(metal_sym, curr_sym, period):
-    metal_data = yf.download(metal_sym, period=period, progress=False)
-    metal_data = fix_data_structure(metal_data)
-    
-    curr_data = yf.download(curr_sym, period=period, progress=False)
-    curr_data = fix_data_structure(curr_data)
-    
-    if metal_data.empty: return pd.DataFrame()
+def load_data(ticker, period):
+    data = yf.download(ticker, period=period, progress=False)
+    return fix_data_structure(data)
 
-    df = metal_data.copy()
-    aligned_currency = curr_data['Close'].reindex(df.index).ffill().bfill()
+@st.cache_data
+def get_market_data(period):
+    # Load all raw data
+    raw_gold = load_data(gold_ticker, period)
+    raw_silver = load_data(silver_ticker, period)
+    raw_forex = load_data(currency_ticker, period)
     
-    if metal_choice == "Gold":
-        factor = 10 / 31.1035
-    else:
-        factor = 1 / 0.0311035
+    if raw_gold.empty or raw_silver.empty or raw_forex.empty:
+        return None, None
 
-    for col in ['Open', 'High', 'Low', 'Close']:
-        df[col] = (df[col] * aligned_currency) * factor
-        
-    df = df.dropna()
-    df.reset_index(inplace=True)
-    return df
+    # Align dates
+    common_index = raw_gold.index.intersection(raw_silver.index).intersection(raw_forex.index)
+    
+    gold = raw_gold.loc[common_index].copy()
+    silver = raw_silver.loc[common_index].copy()
+    forex = raw_forex['Close'].loc[common_index]
+    
+    # Conversion Factors
+    # Gold: Troy Oz -> 10 Grams (1 Troy Oz = 31.1035 Grams)
+    gold_factor = 10 / 31.1035
+    # Silver: Troy Oz -> 1 Kg (1 Troy Oz = 0.0311035 Kg)
+    silver_factor = 1 / 0.0311035
+    
+    # Calculate INR Prices
+    gold['INR_Close'] = gold['Close'] * forex * gold_factor
+    silver['INR_Close'] = silver['Close'] * forex * silver_factor
+    
+    return gold, silver
 
 try:
-    data = load_and_convert_data(metal_ticker, currency_ticker, period)
-    if data.empty:
-        st.error("Data unavailable. Try a different period.")
-        st.stop()
+    gold_df, silver_df = get_market_data(period)
     
-    # Apply Tax if Selected
-    if tax_option == "Include GST (3%)":
-        data[['Open', 'High', 'Low', 'Close']] *= 1.03
+    if gold_df is None:
+        st.error("Data unavailable. Please verify your connection.")
+        st.stop()
+        
+    # Apply Tax Logic
+    tax_multiplier = 1.03 if tax_option == "Include GST (3%)" else 1.0
+    
+    current_gold_24k = gold_df['INR_Close'].iloc[-1] * tax_multiplier
+    current_silver_1kg = silver_df['INR_Close'].iloc[-1] * tax_multiplier
+    
+    # 22K Gold Calculation (Standard: 91.6% of 24K)
+    current_gold_22k = current_gold_24k * 0.916
+
+    # Previous Close for Delta
+    prev_gold_24k = gold_df['INR_Close'].iloc[-2] * tax_multiplier
+    prev_silver_1kg = silver_df['INR_Close'].iloc[-2] * tax_multiplier
+    
+    delta_gold = current_gold_24k - prev_gold_24k
+    delta_silver = current_silver_1kg - prev_silver_1kg
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"Error loading market data: {e}")
     st.stop()
 
+# --- DASHBOARD UI ---
+
+# 1. Key Metrics Row
+col1, col2, col3 = st.columns(3)
+
+def display_card(col, title, price, delta, unit, color="gold"):
+    with col:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">{title}</div>
+            <div class="metric-value" style="color: {color};">₹{price:,.0f}</div>
+            <div style="color: {'#4CAF50' if delta > 0 else '#FF5252'};">
+                {("▲" if delta > 0 else "▼")} ₹{abs(delta):,.0f}
+            </div>
+            <div style="font-size: 0.8em; color: #666;">per {unit}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+display_card(col1, "Gold (24K) - Pure", current_gold_24k, delta_gold, "10g", "#FFD700")
+display_card(col2, "Gold (22K) - Jewellery", current_gold_22k, delta_gold * 0.916, "10g", "#E6C200")
+display_card(col3, "Silver (Fine)", current_silver_1kg, delta_silver, "1kg", "#C0C0C0")
+
+st.markdown("---")
+
+# 2. Tabs for Charts & Advanced Features
+main_tab1, main_tab2, main_tab3 = st.tabs(["📊 Price Trends", "🔮 AI Forecast", "📰 Market News"])
+
+with main_tab1:
+    chart_view = st.radio("Select View:", ["Gold Trend", "Silver Trend"], horizontal=True)
+    
+    fig = go.Figure()
+    
+    if chart_view == "Gold Trend":
+        # Plotting 24K Gold
+        # Recalculate series with tax
+        plot_data = gold_df['INR_Close'] * tax_multiplier
+        fig.add_trace(go.Scatter(x=gold_df.index, y=plot_data, mode='lines', name='Gold 24K', line=dict(color='#FFD700', width=2)))
+        fig.update_layout(title="Gold Price History (24K / 10g)", yaxis_title="Price (INR)", template="plotly_dark")
+    else:
+        # Plotting Silver
+        plot_data = silver_df['INR_Close'] * tax_multiplier
+        fig.add_trace(go.Scatter(x=silver_df.index, y=plot_data, mode='lines', name='Silver', line=dict(color='#C0C0C0', width=2)))
+        fig.update_layout(title="Silver Price History (1Kg)", yaxis_title="Price (INR)", template="plotly_dark")
+        
+    fig.update_layout(xaxis_rangeslider_visible=False, height=500, margin=dict(l=20, r=20, t=50, b=20))
+    st.plotly_chart(fig, use_container_width=True)
+
 # --- AI HELPER FUNCTIONS ---
-def prepare_lstm_data(data, lookback=60):
-    dataset = data['Close'].values.reshape(-1, 1)
+def prepare_lstm_data(series, lookback=60):
+    dataset = series.values.reshape(-1, 1)
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(dataset)
     
@@ -102,47 +208,30 @@ def prepare_lstm_data(data, lookback=60):
     
     return x_train, y_train, scaler, scaled_data
 
-# --- TABS ---
-tab1, tab2, tab3 = st.tabs(["📈 Market Dashboard", "🔮 AI Forecast", "📰 Latest News"])
-
-with tab1:
-    unit = "10g" if metal_choice == "Gold" else "1kg"
-    current_price = data['Close'].iloc[-1]
-    last_close = data['Close'].iloc[-2] if len(data) > 1 else current_price
-    change = current_price - last_close
+with main_tab2:
+    st.subheader("🤖 Artificial Intelligence Forecast")
+    st.write("Our AI analyzes global market patterns to predict tomorrow's trends.")
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("Current Price")
-        if tax_option == "Include GST (3%)":
-            st.caption(f"Price in {selected_state} (Inc. GST)")
-        else:
-            st.caption(f"Price in {selected_state} (Excl. Tax)")
-            
-        st.metric(label=f"₹/{unit}", value=f"₹{current_price:,.0f}", delta=f"{change:,.0f} ₹")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        predict_target = st.selectbox("Predict for:", ["Gold", "Silver"])
+        run_pred = st.button("Run Analysis", type="primary")
         
-    with col2:
-        st.subheader("Price Trend")
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(x=data['Date'], open=data['Open'], high=data['High'],
-                    low=data['Low'], close=data['Close'], name='Price'))
-        fig.update_layout(height=400, xaxis_rangeslider_visible=False, template="plotly_white")
-        st.plotly_chart(fig, use_container_width=True)
-
-with tab2:
-    st.subheader(f"🔮 AI Price Prediction")
-    st.write(f"Our Artificial Intelligence analyzes the past **60 days** of market data to forecast where {metal_choice} prices might go tomorrow.")
-
-    if len(data) > 100:
-        if st.button("Generate Forecast"):
-            with st.spinner("Analyzing market patterns..."):
-                try:
-                    # Prepare Data
-                    look_back = 60
-                    x_train, y_train, scaler, raw_scaled = prepare_lstm_data(data, lookback=look_back)
+    if run_pred:
+        with st.spinner(f"Analyzing {predict_target} markets..."):
+            try:
+                target_df = gold_df if predict_target == "Gold" else silver_df
+                # Use base price for prediction (no tax), then apply tax to result if needed
+                # Actually, simpler to predict on the 'INR_Close' column directly
+                
+                # Prepare Data
+                look_back = 60
+                series_to_predict = target_df['INR_Close']
+                
+                if len(series_to_predict) > 100:
+                    x_train, y_train, scaler, raw_scaled = prepare_lstm_data(series_to_predict, lookback=look_back)
                     
-                    # Build Model (Simplified for user, same strength)
+                    # Build Model
                     model = Sequential()
                     model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
                     model.add(LSTM(units=50, return_sequences=False))
@@ -152,68 +241,59 @@ with tab2:
                     model.compile(optimizer='adam', loss='mean_squared_error')
                     model.fit(x_train, y_train, batch_size=32, epochs=5, verbose=0)
                     
-                    # Predict Next Day
+                    # Predict
                     last_60_days = raw_scaled[-look_back:]
                     last_60_days = last_60_days.reshape(1, look_back, 1)
                     
                     pred_scaled = model.predict(last_60_days)
-                    pred_price = scaler.inverse_transform(pred_scaled)[0][0]
+                    pred_price_base = scaler.inverse_transform(pred_scaled)[0][0]
                     
-                    # Display Results
-                    st.divider()
-                    st.success("AI Analysis Complete!")
+                    # Apply Tax
+                    pred_price_final = pred_price_base * tax_multiplier
+                    current_price_final = series_to_predict.iloc[-1] * tax_multiplier
                     
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.write("### Tomorrow's Forecast")
-                        st.metric(label="Predicted Price", value=f"₹{pred_price:,.0f}")
+                    st.success("Analysis Complete!")
                     
-                    with c2:
-                        diff = pred_price - current_price
-                        st.write("### Expected Trend")
-                        if diff > 0:
-                            st.success(f"📈 UP by ₹{abs(diff):,.0f}")
-                        else:
-                            st.error(f"📉 DOWN by ₹{abs(diff):,.0f}")
-                            
-                    st.info("Note: AI predictions are based on historical patterns and should not be the sole basis for financial decisions.")
+                    m1, m2 = st.columns(2)
+                    with m1:
+                        st.metric("Predicted Price Tomorrow", f"₹{pred_price_final:,.0f}")
+                    with m2:
+                        diff = pred_price_final - current_price_final
+                        st.metric("Expected Change", f"{('▲' if diff>0 else '▼')} ₹{abs(diff):,.0f}")
+                        
+                else:
+                    st.warning("Not enough data history for accurate prediction. Select 'max' period.")
                     
-                except Exception as e:
-                    st.error(f"Analysis Error: {e}")
-    else:
-        st.warning("Needs at least 100 days of data for accurate AI analysis. Please select '1y' or 'max' in the sidebar.")
+            except Exception as e:
+                st.error(f"AI Error: {e}")
 
-with tab3:
-    st.subheader(f"📰 Latest {metal_choice} News")
-    
+with main_tab3:
+    st.subheader("📰 Live Market News")
     try:
-        ticker = yf.Ticker(metal_ticker)
+        # Default to Gold news, or mix? Let's just show Gold for now as primary
+        ticker = yf.Ticker(gold_ticker)
         news_list = ticker.news
         
         if news_list:
             for item in news_list:
                 with st.container():
-                     # Extract info safely
                     content = item.get('content', {})
                     title = content.get('title', 'No Title')
-                    # Try to find a link
                     if 'clickThroughUrl' in content and content['clickThroughUrl']:
                          link = content['clickThroughUrl']['url']
                     elif 'canonicalUrl' in content and content['canonicalUrl']:
                          link = content['canonicalUrl']['url']
                     else:
                          link = "#"
-                         
-                    summary = content.get('summary', 'No summary available.')
-                    provider = content.get('provider', {}).get('displayName', 'Unknown Source')
-                    pub_date = content.get('pubDate', '')
                     
-                    st.markdown(f"### [{title}]({link})")
-                    st.caption(f"Source: {provider} | {pub_date}")
-                    st.write(summary)
-                    st.divider()
+                    summary = content.get('summary', '')
+                    provider = content.get('provider', {}).get('displayName', 'Source')
+                    
+                    st.markdown(f"**[{title}]({link})**")
+                    st.caption(f"{provider}")
+                    st.markdown(f"_{summary}_")
+                    st.markdown("---")
         else:
-            st.write("No direct news feed available at the moment.")
+            st.info("No immediate news headlines found via API.")
     except Exception as e:
-        st.error("Could not fetch live news. Please try again later.")
-        st.caption(str(e))
+        st.error("News service temporarily unavailable.")
