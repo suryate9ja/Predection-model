@@ -161,7 +161,7 @@ with tab2:
                     
                     # Display Results
                     st.divider()
-                    st.succes("AI Analysis Complete!")
+                    st.success("AI Analysis Complete!")
                     
                     c1, c2 = st.columns(2)
                     with c1:
