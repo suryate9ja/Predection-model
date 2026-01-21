@@ -14,36 +14,76 @@ st.set_page_config(page_title="Gold/Silver AI Insight", layout="wide", page_icon
 # Custom CSS for "Ultra Clean" look
 st.markdown("""
 <style>
+    /* Global Glassmorphism Background */
+    
+    .stApp {
+        background: radial-gradient(circle at 10% 20%, rgb(30, 30, 30) 0%, rgb(0, 0, 0) 90%);
+        color: white;
+    }
+
+    /* Glass Effect Cards */
     .metric-card {
-        background-color: #1E1E1E;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #333;
+        background: rgba(255, 255, 255, 0.05); /* Ultra translucent */
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         text-align: center;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     }
+
+    /* Hover Animation */
+    .metric-card:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 215, 0, 0.3); /* Gold hint on hover */
+    }
+
     .metric-value {
-        font-size: 2em;
-        font-weight: bold;
-        color: #FFD700;
+        font-size: 2.2em;
+        font-weight: 700;
+        background: linear-gradient(45deg, #FFD700, #FDB931);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0px 4px 10px rgba(255, 215, 0, 0.2);
     }
+    
     .metric-label {
-        color: #AAAAAA;
+        color: #E0E0E0;
         font-size: 1.1em;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
     }
-    /* Hide Streamlit components */
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 8px;
+        border-radius: 12px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        border-radius: 8px;
+        color: #AAAAAA;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: rgba(255, 215, 0, 0.15) !important;
+        color: #FFD700 !important;
+        font-weight: bold;
+    }
+
+    /* Clean up Streamlit UI */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-    }
+    header {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 
