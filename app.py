@@ -113,7 +113,7 @@ selected_state = st.sidebar.selectbox("Location", indian_states)
 # Tax Toggle
 tax_option = st.sidebar.radio("Display Mode", ["Base Price", "Include GST (3%)"])
 
-period = st.sidebar.selectbox("TIMEFRAME", ["1y", "2y", "5y", "max"], index=1)
+period = st.sidebar.selectbox("TIMEFRAME", ["1y", "2y", "3y", "4y", "5y", "max"], index=1)
 
 # API Tickers
 gold_ticker = "GC=F"
