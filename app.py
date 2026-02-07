@@ -7,9 +7,15 @@ from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM
+from streamlit_autorefresh import st_autorefresh
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Gold & Silver Analytics", layout="wide", page_icon="None")
+
+# Auto-refresh every 15 minutes (900000 milliseconds)
+count = st_autorefresh(interval=15 * 60 * 1000, key="dataupdater")
+
 
 # Custom CSS for "Premium Glass" look
 st.markdown("""
@@ -129,22 +135,36 @@ def fix_data_structure(df):
         df.index = df.index.tz_localize(None)
     return df
 
-@st.cache_data
+@st.cache_data(ttl=900)  # Cache for 15 minutes
 def load_data(ticker, period):
     data = yf.download(ticker, period=period, progress=False)
     return fix_data_structure(data)
 
-@st.cache_data
+@st.cache_data(ttl=300)  # Cache live data for 5 minutes
+def get_live_price(ticker):
+    # Fetch 1-day data with 1-minute interval for the latest price
+    data = yf.download(ticker, period="1d", interval="1m", progress=False)
+    data = fix_data_structure(data)
+    if not data.empty:
+        return data['Close'].iloc[-1]
+    return None
+
+@st.cache_data(ttl=900)
 def get_market_data(period):
-    # Load all raw data
+    # Load historical data for charts
     raw_gold = load_data(gold_ticker, period)
     raw_silver = load_data(silver_ticker, period)
     raw_forex = load_data(currency_ticker, period)
     
+    # Load LIVE prices for metrics (overrides the last point of historical if available)
+    live_gold_price = get_live_price(gold_ticker)
+    live_silver_price = get_live_price(silver_ticker)
+    live_forex_price = get_live_price(currency_ticker)
+
     if raw_gold.empty or raw_silver.empty or raw_forex.empty:
         return None, None
 
-    # Align dates
+    # Align dates for historical charts
     common_index = raw_gold.index.intersection(raw_silver.index).intersection(raw_forex.index)
     
     gold = raw_gold.loc[common_index].copy()
@@ -157,14 +177,28 @@ def get_market_data(period):
     # Silver: Troy Oz -> 1 Kg (1 Troy Oz = 0.0311035 Kg)
     silver_factor = 1 / 0.0311035
     
-    # Calculate INR Prices
+    # Calculate INR Prices for History
     gold['INR_Close'] = gold['Close'] * forex * gold_factor
     silver['INR_Close'] = silver['Close'] * forex * silver_factor
     
-    return gold, silver
+    # Calculate LIVE INR Prices
+    # Fallback to historical last close if live fetch fails
+    current_gold_usd = live_gold_price if live_gold_price else raw_gold['Close'].iloc[-1]
+    current_silver_usd = live_silver_price if live_silver_price else raw_silver['Close'].iloc[-1]
+    current_forex = live_forex_price if live_forex_price else raw_forex['Close'].iloc[-1]
+    
+    current_gold_inr = current_gold_usd * current_forex * gold_factor
+    current_silver_inr = current_silver_usd * current_forex * silver_factor
+    
+    # Store these separate live values in the dataframe metadata or return separately?
+    # For now, let's just append/overwrite the last value in the dataframe to ensure the chart shows the latest?
+    # Actually, better to return them separately for the metrics to ensure precision.
+    
+    return gold, silver, current_gold_inr, current_silver_inr
+
 
 try:
-    gold_df, silver_df = get_market_data(period)
+    gold_df, silver_df, live_gold_inr, live_silver_inr = get_market_data(period)
     
     if gold_df is None:
         st.error("Data unavailable. Please verify your connection.")
@@ -173,11 +207,13 @@ try:
     # Apply Tax Logic
     tax_multiplier = 1.03 if tax_option == "Include GST (3%)" else 1.0
     
-    current_gold_24k = gold_df['INR_Close'].iloc[-1] * tax_multiplier
-    current_silver_1kg = silver_df['INR_Close'].iloc[-1] * tax_multiplier
+    # Use the LIVE values for current price
+    current_gold_24k = live_gold_inr * tax_multiplier
+    current_silver_1kg = live_silver_inr * tax_multiplier
     
     # 22K Gold Calculation (Standard: 91.6% of 24K)
     current_gold_22k = current_gold_24k * 0.916
+
 
     # Previous Close for Delta
     prev_gold_24k = gold_df['INR_Close'].iloc[-2] * tax_multiplier

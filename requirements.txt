@@ -5,3 +5,9 @@ plotly
 scikit-learn
 numpy
 tensorflow
+streamlit-autorefresh
+fastapi
+uvicorn
+apscheduler
+beautifulsoup4
+requests
